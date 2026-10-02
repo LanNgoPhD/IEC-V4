@@ -77,6 +77,16 @@ function ttsIsEnglishVoice(v){
   return l==='en'||l.startsWith('en-');
 }
 
+function ttsIsIOS(){
+  const ua=String(navigator.userAgent||'');
+  const p=String(navigator.platform||'');
+  return /iPhone|iPad|iPod/i.test(ua)||(p==='MacIntel'&&Number(navigator.maxTouchPoints||0)>1);
+}
+
+function ttsIsAndroid(){
+  return /Android/i.test(String(navigator.userAgent||''));
+}
+
 function ttsHasApi(){
   return ('speechSynthesis' in window)&&('SpeechSynthesisUtterance' in window);
 }
@@ -142,8 +152,53 @@ function selectTtsVoice(preset){
   const exactLocal=exact.filter(v=>v&&v.localService!==false);
   const englishLocal=english.filter(v=>v&&v.localService!==false);
 
+  const byNames=(a,names)=>{
+    for(const wanted of names){
+      const hit=a.find(v=>String(v&&v.name||'').toLowerCase().includes(wanted));
+      if(hit)return hit;
+    }
+    return null;
+  };
   const desired=a=>a.find(v=>ttsVoiceGender(v.name)===gender);
   const def=a=>a.find(v=>!!v.default);
+
+  // iPhone/iPad: ưu tiên giọng native English ổn định thay vì ép giọng nam.
+  // Một số voice iOS nghe méo/robotic khi bị ép theo preset khác locale thực tế.
+  if(ttsIsIOS()){
+    const iosPreferred=p==='FEMALE_UK'
+      ? ['serena','kate','martha','daniel']
+      : ['samantha','ava','allison','susan','nicky'];
+    return byNames(exactLocal,iosPreferred)||
+           def(exactLocal)||
+           exactLocal[0]||
+           byNames(exact,iosPreferred)||
+           def(exact)||
+           exact[0]||
+           def(englishLocal)||
+           englishLocal[0]||
+           def(english)||
+           english[0]||
+           null;
+  }
+
+  // Android: ưu tiên voice English đúng locale/default của hệ thống.
+  // Không ép tên/gender nếu máy không có đúng voice đó vì dễ làm phát âm sai hoặc không phát.
+  if(ttsIsAndroid()){
+    const androidPreferred=p==='FEMALE_UK'
+      ? ['google uk english female','english united kingdom','en-gb']
+      : ['google us english','english united states','en-us'];
+    return byNames(exactLocal,androidPreferred)||
+           def(exactLocal)||
+           exactLocal[0]||
+           byNames(exact,androidPreferred)||
+           def(exact)||
+           exact[0]||
+           def(englishLocal)||
+           englishLocal[0]||
+           def(english)||
+           english[0]||
+           null;
+  }
 
   return desired(exactLocal)||
          def(exactLocal)||
@@ -195,7 +250,16 @@ async function ttsSpeak(text,rate=1,repeat=1){
   }
 
   let left=Math.max(1,Number(repeat)||1);
-  const safeRate=Math.max(.5,Math.min(1.2,Number(rate)||1));
+  const requestedRate=Number(rate)||1;
+  // iOS ổn định hơn ở tốc độ vừa phải; các nền tảng khác giữ nguyên hành vi cũ.
+  const safeRate=ttsIsIOS()
+    ? Math.max(.72,Math.min(.90,requestedRate*.88))
+    : ttsIsAndroid()
+      ? Math.max(.78,Math.min(1.0,requestedRate*.94))
+      : Math.max(.5,Math.min(1.2,requestedRate));
+  const actualLang=String(voice&&voice.lang||targetLang).replace('_','-')||targetLang;
+  const startDelay=ttsIsIOS()?260:(ttsIsAndroid()?220:140);
+  const repeatDelay=ttsIsIOS()?420:(ttsIsAndroid()?380:320);
 
   return new Promise(resolve=>{
     const say=()=>{
@@ -206,7 +270,8 @@ async function ttsSpeak(text,rate=1,repeat=1){
 
       const u=new SpeechSynthesisUtterance(content);
       u.voice=voice;
-      u.lang=targetLang;
+      // Dùng đúng locale của voice thực tế; tránh ép en-US lên voice khác locale trên iOS.
+      u.lang=actualLang;
       u.rate=safeRate;
       u.pitch=1;
       u.volume=1;
@@ -217,7 +282,7 @@ async function ttsSpeak(text,rate=1,repeat=1){
           return;
         }
         left--;
-        if(left>0)setTimeout(say,320);
+        if(left>0)setTimeout(say,repeatDelay);
         else resolve(true);
       };
 
@@ -234,7 +299,7 @@ async function ttsSpeak(text,rate=1,repeat=1){
         setTimeout(()=>{
           if(seq!==IEC_TTS_CANCEL_SEQ){resolve(false);return;}
           try{window.speechSynthesis.speak(u)}catch(e){resolve(false);}
-        },140);
+        },startDelay);
       }catch(e){
         resolve(false);
       }
@@ -392,10 +457,15 @@ function speechMatches(expected,cands,profile){
   return speechMatchDetail(expected,cands,profile).pass;
 }
 
+function iosSpeechHelpMessage(){
+  return 'Trên iPhone/iPad, phần THI NÓI phải mở bằng ứng dụng Safari thật (không mở trong cửa sổ bên trong Gmail/ChatGPT/Facebook/Zalo hoặc app khác). Hãy bấm dấu … ở góc trên → Mở trong Safari. Nếu Safari vẫn báo lỗi, vào Cài đặt → Cài đặt chung → Bàn phím → bật Bật đọc chính tả (Enable Dictation), rồi mở lại bài thi.';
+}
+
 function buildRecognition(profile){
   const SR=window.webkitSpeechRecognition||window.SpeechRecognition;
 
   if(!SR){
+    if(ttsIsIOS())throw new Error(iosSpeechHelpMessage());
     throw new Error(
       'Trình duyệt này chưa hỗ trợ nhận diện giọng nói. Hãy dùng Chrome/Edge phiên bản mới.'
     );
@@ -506,7 +576,7 @@ function oneShotSpeech(expected,profile,phrases,onStatus){
       let msg='Lỗi nhận diện giọng nói: '+code;
 
       if(code==='not-allowed'||code==='service-not-allowed'){
-        msg='Micro hoặc dịch vụ nhận diện giọng nói chưa được cho phép.';
+        msg=ttsIsIOS()?iosSpeechHelpMessage():'Micro hoặc dịch vụ nhận diện giọng nói chưa được cho phép.';
       }else if(code==='audio-capture'){
         msg='Không lấy được tín hiệu từ microphone.';
       }else if(code==='network'){
@@ -765,6 +835,11 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
         if(['not-allowed','service-not-allowed','audio-capture','network','language-not-supported'].includes(err)){
           let viErr='lỗi nhận diện giọng nói: '+err;
 
+          if((err==='not-allowed'||err==='service-not-allowed')&&ttsIsIOS()){
+            technicalFail(iosSpeechHelpMessage()+' Lượt thi chưa bị tính.');
+            return;
+          }
+
           if(err==='audio-capture')viErr='không truy cập được micro';
           else if(err==='network')viErr='mất kết nối nhận diện giọng nói';
           else if(err==='not-allowed'||err==='service-not-allowed')viErr='micro/dịch vụ nhận diện chưa được cho phép';
@@ -793,9 +868,11 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
       };
 
       try{
+        // Dừng TTS trước khi mở STT để tránh xung đột audio session trên mobile.
+        stopTts();
         localRec.start();
       }catch(e){
-        technicalFail('Không khởi động được micro/nhận diện giọng nói. Lượt thi chưa bị tính.');
+        technicalFail((ttsIsIOS()?iosSpeechHelpMessage():'Không khởi động được micro/nhận diện giọng nói.')+' Lượt thi chưa bị tính.');
       }
     };
 
