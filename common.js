@@ -165,15 +165,23 @@ function selectTtsVoice(preset){
   // iPhone/iPad: ưu tiên giọng native English ổn định thay vì ép giọng nam.
   // Một số voice iOS nghe méo/robotic khi bị ép theo preset khác locale thực tế.
   if(ttsIsIOS()){
+    // iPhone/iPad: map đúng giới tính theo preset.
+    // MALE_US  -> ưu tiên giọng nam en-US.
+    // FEMALE_UK -> ưu tiên giọng nữ en-GB.
     const iosPreferred=p==='FEMALE_UK'
-      ? ['serena','kate','martha','daniel']
-      : ['samantha','ava','allison','susan','nicky'];
+      ? ['serena','kate','martha']
+      : ['alex','aaron','fred'];
+
     return byNames(exactLocal,iosPreferred)||
+           desired(exactLocal)||
+           byNames(exact,iosPreferred)||
+           desired(exact)||
            def(exactLocal)||
            exactLocal[0]||
-           byNames(exact,iosPreferred)||
            def(exact)||
            exact[0]||
+           desired(englishLocal)||
+           desired(english)||
            def(englishLocal)||
            englishLocal[0]||
            def(english)||
