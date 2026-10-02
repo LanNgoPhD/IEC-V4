@@ -173,7 +173,7 @@ function oneShotSpeech(expected,profile,phrases,onStatus){
 
       r.onerror=e=>{
         const code=String(e&&e.error||'');
-
+        console.error('[IEC V4 STT] ONERROR | code='+code+' | context='+(r&&r.__iecContextApplied)+' | allowContext='+allowContext,e);
         // Chrome có thể hỗ trợ property .phrases nhưng model nhận diện hiện tại
         // lại không hỗ trợ contextual biasing. Fallback ngay, không tính là lỗi.
         if(code==='phrases-not-supported' && r && r.__iecContextApplied && allowContext){
