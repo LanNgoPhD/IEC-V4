@@ -32,7 +32,118 @@ function buildRecognition(profile,phrases){const SR=window.SpeechRecognition||wi
   try{if(profile&&profile.enabled&&Array.isArray(phrases)&&phrases.length&&('phrases' in r)){const boost=Math.max(0,Math.min(10,Number(profile.boost)||0));if(window.SpeechRecognitionPhrase)r.phrases=phrases.map(p=>new SpeechRecognitionPhrase(String(p),boost));else r.phrases=phrases.map(p=>({phrase:String(p),boost:boost}));}}catch(e){}
   return r;
 }
-function oneShotSpeech(expected,profile,phrases,onStatus){return new Promise((resolve,reject)=>{let r;try{r=buildRecognition(profile,phrases)}catch(e){reject(e);return}let finalTop='',alts=[],heard='';if(onStatus)onStatus('ĐANG NGHE','');r.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const res=e.results[i];if(res.isFinal){finalTop=String(res[0]&&res[0].transcript||'').trim();alts=[];for(let j=0;j<res.length;j++){const t=String(res[j]&&res[j].transcript||'').trim();if(t&&!alts.includes(t))alts.push(t)}}else interim+=String(res[0]&&res[0].transcript||'')}heard=finalTop||interim.trim()||heard;if(onStatus)onStatus('ĐANG NGHE',heard)};r.onerror=e=>reject(new Error(e.error==='not-allowed'?'Micro chưa được cho phép.':'Lỗi nhận diện giọng nói: '+e.error));r.onend=()=>{const c=[finalTop].concat(alts).filter(Boolean);resolve({heard:finalTop||heard,alternatives:alts,pass:speechMatches(expected,c)});};try{r.start()}catch(e){reject(e)}})}
+function oneShotSpeech(expected, profile, phrases, onStatus) {
+  return new Promise((resolve, reject) => {
+    let r;
+
+    try {
+      r = buildRecognition(profile, phrases);
+    } catch (e) {
+      reject(e);
+      return;
+    }
+
+    let finalTop = '';
+    let alts = [];
+    let heard = '';
+    let settled = false;
+
+    function finishError(err) {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    }
+
+    r.onstart = () => {
+      if (onStatus) onStatus('ĐANG NGHE', '');
+    };
+
+    r.onspeechstart = () => {
+      if (onStatus) onStatus('ĐÃ NHẬN GIỌNG NÓI', heard);
+    };
+
+    r.onresult = e => {
+      let interim = '';
+
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+
+        if (res.isFinal) {
+          finalTop = String(
+            res[0] && res[0].transcript || ''
+          ).trim();
+
+          alts = [];
+
+          for (let j = 0; j < res.length; j++) {
+            const t = String(
+              res[j] && res[j].transcript || ''
+            ).trim();
+
+            if (t && !alts.includes(t)) alts.push(t);
+          }
+        } else {
+          interim += String(
+            res[0] && res[0].transcript || ''
+          );
+        }
+      }
+
+      heard = finalTop || interim.trim() || heard;
+
+      if (onStatus) {
+        onStatus('ĐANG NGHE', heard);
+      }
+    };
+
+    r.onnomatch = () => {
+      if (onStatus) {
+        onStatus('CÓ TIẾNG NÓI – CHƯA NHẬN ĐƯỢC CHỮ', heard);
+      }
+    };
+
+    r.onerror = e => {
+      const code = String(e.error || '');
+
+      let msg = 'Lỗi nhận diện giọng nói: ' + code;
+
+      if (code === 'not-allowed' || code === 'service-not-allowed') {
+        msg = 'Micro hoặc dịch vụ nhận diện giọng nói chưa được cho phép.';
+      } else if (code === 'audio-capture') {
+        msg = 'Không lấy được tín hiệu từ microphone.';
+      } else if (code === 'no-speech') {
+        msg = 'Không phát hiện được tiếng nói.';
+      } else if (code === 'network') {
+        msg = 'Lỗi kết nối dịch vụ nhận diện giọng nói.';
+      }
+
+      if (onStatus) onStatus('LỖI MICRO/STT: ' + code, heard);
+
+      finishError(new Error(msg));
+    };
+
+    r.onend = () => {
+      if (settled) return;
+      settled = true;
+
+      const candidates = [finalTop]
+        .concat(alts)
+        .filter(Boolean);
+
+      resolve({
+        heard: finalTop || heard,
+        alternatives: alts,
+        pass: speechMatches(expected, candidates)
+      });
+    };
+
+    try {
+      r.start();
+    } catch (e) {
+      finishError(e);
+    }
+  });
+}
 function viState(s){const m={RED:'ĐỎ',YELLOW:'VÀNG',BLUE:'XANH',GREEN:'XANH LÁ',DONE:'ĐÃ XONG',PENDING:'CHỜ',COMPLETED:'ĐÃ HOÀN THÀNH',AWAIT_CLIP:'CHỜ VIDEO',CLIP_MISSING:'THIẾU VIDEO',MISSING:'THIẾU',MISSED:'BỎ LỠ',STARTED:'ĐANG LÀM',PLANNED:'ĐÃ LẬP KẾ HOẠCH',RELEASED:'ĐÃ PHÁT',CLOSED:'ĐÃ ĐÓNG',ACTIVE:'ĐANG HOẠT ĐỘNG',TEST:'KIỂM THỬ','N/A':'—'};return m[String(s||'').toUpperCase()]||String(s||'')}
 
 async function runOfficialSpeechTest(words,profile,phrases,hooks){
