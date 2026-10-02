@@ -162,21 +162,16 @@ function selectTtsVoice(preset){
   const desired=a=>a.find(v=>ttsVoiceGender(v.name)===gender);
   const def=a=>a.find(v=>!!v.default);
 
-  // iPhone/iPad:
-  // Giữ nguyên đúng nhóm voice của bản trước mà người dùng xác nhận nghe rõ/ổn.
-  // Chỉ đảo ánh xạ hai lựa chọn trên iPhone vì thiết bị thực tế đang phát ngược Nam/Nữ.
-  // Không ép sang các voice khác để tránh giọng nhỏ/méo.
+  // iPhone/iPad: ưu tiên giọng native English ổn định thay vì ép giọng nam.
+  // Một số voice iOS nghe méo/robotic khi bị ép theo preset khác locale thực tế.
   if(ttsIsIOS()){
     const iosPreferred=p==='FEMALE_UK'
-      ? ['samantha','ava','allison','susan','nicky']
-      : ['serena','kate','martha','daniel'];
-
-    // Trên iPhone ưu tiên tìm voice theo tên trong toàn bộ English trước,
-    // rồi mới fallback theo locale/default. Điều này giữ lại voice đã nghe tốt trên máy.
-    return byNames(englishLocal,iosPreferred)||
-           byNames(english,iosPreferred)||
+      ? ['serena','kate','martha','daniel']
+      : ['samantha','ava','allison','susan','nicky'];
+    return byNames(exactLocal,iosPreferred)||
            def(exactLocal)||
            exactLocal[0]||
+           byNames(exact,iosPreferred)||
            def(exact)||
            exact[0]||
            def(englishLocal)||
@@ -246,8 +241,15 @@ async function ttsSpeak(text,rate=1,repeat=1){
   await initTtsVoices();
 
   const preset=getTtsPreset();
-  const voice=selectTtsVoice(preset);
-  const targetLang=preset==='FEMALE_UK'?'en-GB':'en-US';
+
+  // iPhone/iPad: giữ NGUYÊN đúng hai voice của bản đầu tiên đã nghe hay.
+  // Chỉ đảo preset nội bộ để vị trí chọn Nam/Nữ trên giao diện không còn bị ngược.
+  const effectivePreset=ttsIsIOS()
+    ? (preset==='MALE_US'?'FEMALE_UK':preset==='FEMALE_UK'?'MALE_US':preset)
+    : preset;
+
+  const voice=selectTtsVoice(effectivePreset);
+  const targetLang=effectivePreset==='FEMALE_UK'?'en-GB':'en-US';
 
   if(!voice){
     alert('Thiết bị chưa tải được giọng English. Hãy kiểm tra giọng English trong cài đặt hệ thống hoặc mở lại trang bằng Chrome/Safari.');
@@ -279,7 +281,7 @@ async function ttsSpeak(text,rate=1,repeat=1){
       u.lang=actualLang;
       u.rate=safeRate;
       u.pitch=1;
-      u.volume=1; // mức tối đa SpeechSynthesis cho phép
+      u.volume=1;
 
       u.onend=()=>{
         if(seq!==IEC_TTS_CANCEL_SEQ){
