@@ -12,23 +12,387 @@ const IEC_TTS_STORAGE_KEY='iec_v4_tts_preset';
 let IEC_TTS_VOICES=[];
 let IEC_TTS_VOICES_READY=false;
 let IEC_TTS_INIT_PROMISE=null;
-function ttsPresetLabel(code){const m={MALE_US:'Nam – Mỹ',FEMALE_UK:'Nữ – Anh'};return m[String(code||'').toUpperCase()]||String(code||'')}
-function ttsAllowedPresets(){let v=IEC_CONFIG&&IEC_CONFIG.TTS_STUDENT_PRESETS;if(!Array.isArray(v))v=String(v||'MALE_US,FEMALE_UK').split(',');v=v.map(x=>String(x||'').trim().toUpperCase()).filter(x=>['MALE_US','FEMALE_UK'].includes(x));return v.length?v:['MALE_US','FEMALE_UK']}
-function getTtsPreset(){const allowed=ttsAllowedPresets(),def=String((IEC_CONFIG&&IEC_CONFIG.TTS_DEFAULT_PRESET)||'MALE_US').toUpperCase();let saved='';try{saved=String(localStorage.getItem(IEC_TTS_STORAGE_KEY)||'').toUpperCase()}catch(e){}return allowed.includes(saved)?saved:(allowed.includes(def)?def:allowed[0])}
-function setTtsPreset(code){const allowed=ttsAllowedPresets(),v=String(code||'').toUpperCase();if(!allowed.includes(v))return getTtsPreset();try{localStorage.setItem(IEC_TTS_STORAGE_KEY,v)}catch(e){}stopTts();return v}
-function setupTtsPresetSelect(elOrId){const el=typeof elOrId==='string'?document.getElementById(elOrId):elOrId;if(!el)return;const allowed=ttsAllowedPresets(),selected=getTtsPreset();el.innerHTML='';allowed.forEach(code=>{const o=document.createElement('option');o.value=code;o.textContent=ttsPresetLabel(code);o.selected=code===selected;el.appendChild(o)});el.onchange=()=>setTtsPreset(el.value);initTtsVoices()}
-function ttsVoiceGender(name){const n=String(name||'').toLowerCase();const female=['female','samantha','victoria','serena','karen','moira','tessa','fiona','ava','allison','susan','zira','hazel','salli','joanna','amy','emma','olivia','aria','jenny','sonia','libby'];const male=['male','alex','daniel','fred','tom','aaron','rishi','guy','david','mark','george','james','oliver','ryan','liam','matthew','andrew','arthur','albert','brian','joey','justin','matthew','eric'];if(female.some(x=>n.includes(x)))return 'FEMALE';if(male.some(x=>n.includes(x)))return 'MALE';return 'UNKNOWN'}
-function ttsVoiceLang(v){return String(v&&v.lang||'').replace('_','-').toLowerCase()}
-function ttsIsEnglishVoice(v){const l=ttsVoiceLang(v);return l==='en'||l.startsWith('en-')}
-function refreshTtsVoices(){if(!('speechSynthesis' in window))return [];let v=[];try{v=window.speechSynthesis.getVoices()||[]}catch(e){}if(v.length){IEC_TTS_VOICES=v.slice();if(v.some(ttsIsEnglishVoice))IEC_TTS_VOICES_READY=true}return IEC_TTS_VOICES}
-function initTtsVoices(){if(!('speechSynthesis' in window))return Promise.resolve([]);refreshTtsVoices();if(IEC_TTS_VOICES_READY)return Promise.resolve(IEC_TTS_VOICES);if(IEC_TTS_INIT_PROMISE)return IEC_TTS_INIT_PROMISE;IEC_TTS_INIT_PROMISE=new Promise(resolve=>{let done=false,ticks=0,poll=null,limit=null;const finish=()=>{if(done)return;done=true;if(poll)clearInterval(poll);if(limit)clearTimeout(limit);try{window.speechSynthesis.removeEventListener('voiceschanged',changed)}catch(e){}refreshTtsVoices();resolve(IEC_TTS_VOICES)};const changed=()=>{refreshTtsVoices();if(IEC_TTS_VOICES.some(ttsIsEnglishVoice))finish()};try{window.speechSynthesis.addEventListener('voiceschanged',changed)}catch(e){}poll=setInterval(()=>{ticks++;refreshTtsVoices();if(IEC_TTS_VOICES.some(ttsIsEnglishVoice)||ticks>=25)finish()},100);limit=setTimeout(finish,2600)}).finally(()=>{IEC_TTS_INIT_PROMISE=null});return IEC_TTS_INIT_PROMISE}
-function selectTtsVoice(preset){const english=(refreshTtsVoices()||[]).filter(ttsIsEnglishVoice);if(!english.length)return null;const p=String(preset||getTtsPreset()).toUpperCase(),target=p==='FEMALE_UK'?'en-gb':'en-us',gender=p==='FEMALE_UK'?'FEMALE':'MALE';const exact=english.filter(v=>ttsVoiceLang(v).startsWith(target));const desired=a=>a.find(v=>ttsVoiceGender(v.name)===gender);const unknown=a=>a.find(v=>ttsVoiceGender(v.name)==='UNKNOWN');return desired(exact)||unknown(exact)||desired(english)||exact[0]||unknown(english)||english[0]||null}
-async function ttsSpeak(text,rate=1,repeat=1){if(!('speechSynthesis' in window)){alert('Thiết bị này không hỗ trợ đọc văn bản.');return false}const content=String(text||'').trim();if(!content)return false;stopTts();await initTtsVoices();const preset=getTtsPreset(),voice=selectTtsVoice(preset);if(!voice){alert('Thiết bị chưa có giọng đọc tiếng Anh. Vui lòng cài/bật giọng English trong cài đặt hệ thống rồi thử lại. Hệ thống không dùng giọng tiếng Việt thay thế.');return false}let left=Math.max(1,Number(repeat)||1),cancelled=false;const targetLang=preset==='FEMALE_UK'?'en-GB':'en-US';return new Promise(resolve=>{const say=()=>{if(cancelled||left<=0){resolve(!cancelled);return}const u=new SpeechSynthesisUtterance(content);u.voice=voice;u.lang=String(voice.lang||targetLang);u.rate=Math.max(.2,Math.min(2,Number(rate)||1));u.onend=()=>{left--;if(left>0)setTimeout(say,180);else resolve(true)};u.onerror=e=>{const err=String(e&&e.error||'');if(err!=='canceled'&&err!=='interrupted')alert('Không phát được giọng đọc tiếng Anh trên thiết bị này. Hãy thử đổi giọng hoặc kiểm tra cài đặt TTS.');resolve(false)};try{window.speechSynthesis.speak(u)}catch(e){resolve(false)}};say()})}
-function stopTts(){try{window.speechSynthesis.cancel()}catch(e){}}
-if('speechSynthesis' in window){try{window.speechSynthesis.addEventListener('voiceschanged',refreshTtsVoices)}catch(e){}refreshTtsVoices()}
-function normalizeSpeech(value){return String(value||'').trim().toLowerCase().replace(/\b4\b/g,'four').replace(/\b2\b/g,'two').replace(/[-/]/g,'').replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,'')}
-function speechMatches(expected,cands){const t=normalizeSpeech(expected);return !!t&&(cands||[]).some(x=>normalizeSpeech(x)===t)}
-function buildRecognition(profile,phrases,allowContext=true){
+let IEC_TTS_CANCEL_SEQ=0;
+
+function ttsPresetLabel(code){
+  const m={MALE_US:'Nam – Mỹ',FEMALE_UK:'Nữ – Anh'};
+  return m[String(code||'').toUpperCase()]||String(code||'');
+}
+
+function ttsAllowedPresets(){
+  let v=IEC_CONFIG&&IEC_CONFIG.TTS_STUDENT_PRESETS;
+  if(!Array.isArray(v))v=String(v||'MALE_US,FEMALE_UK').split(',');
+  v=v.map(x=>String(x||'').trim().toUpperCase()).filter(x=>['MALE_US','FEMALE_UK'].includes(x));
+  return v.length?v:['MALE_US','FEMALE_UK'];
+}
+
+function getTtsPreset(){
+  const allowed=ttsAllowedPresets();
+  const def=String((IEC_CONFIG&&IEC_CONFIG.TTS_DEFAULT_PRESET)||'MALE_US').toUpperCase();
+  let saved='';
+  try{saved=String(localStorage.getItem(IEC_TTS_STORAGE_KEY)||'').toUpperCase()}catch(e){}
+  return allowed.includes(saved)?saved:(allowed.includes(def)?def:allowed[0]);
+}
+
+function setTtsPreset(code){
+  const allowed=ttsAllowedPresets();
+  const v=String(code||'').toUpperCase();
+  if(!allowed.includes(v))return getTtsPreset();
+  try{localStorage.setItem(IEC_TTS_STORAGE_KEY,v)}catch(e){}
+  stopTts();
+  return v;
+}
+
+function setupTtsPresetSelect(elOrId){
+  const el=typeof elOrId==='string'?document.getElementById(elOrId):elOrId;
+  if(!el)return;
+  const allowed=ttsAllowedPresets(),selected=getTtsPreset();
+  el.innerHTML='';
+  allowed.forEach(code=>{
+    const o=document.createElement('option');
+    o.value=code;
+    o.textContent=ttsPresetLabel(code);
+    o.selected=code===selected;
+    el.appendChild(o);
+  });
+  el.onchange=()=>setTtsPreset(el.value);
+  initTtsVoices();
+}
+
+function ttsVoiceGender(name){
+  const n=String(name||'').toLowerCase();
+  const female=['female','samantha','victoria','serena','karen','moira','tessa','fiona','ava','allison','susan','zira','hazel','salli','joanna','amy','emma','olivia','aria','jenny','sonia','libby'];
+  const male=['male','alex','daniel','fred','tom','aaron','rishi','guy','david','mark','george','james','oliver','ryan','liam','matthew','andrew','arthur','albert','brian','joey','justin','eric'];
+  if(female.some(x=>n.includes(x)))return 'FEMALE';
+  if(male.some(x=>n.includes(x)))return 'MALE';
+  return 'UNKNOWN';
+}
+
+function ttsVoiceLang(v){
+  return String(v&&v.lang||'').replace('_','-').toLowerCase();
+}
+
+function ttsIsEnglishVoice(v){
+  const l=ttsVoiceLang(v);
+  return l==='en'||l.startsWith('en-');
+}
+
+function ttsHasApi(){
+  return ('speechSynthesis' in window)&&('SpeechSynthesisUtterance' in window);
+}
+
+function refreshTtsVoices(){
+  if(!ttsHasApi())return [];
+  let v=[];
+  try{v=window.speechSynthesis.getVoices()||[]}catch(e){}
+  if(v.length){
+    IEC_TTS_VOICES=v.slice();
+    if(v.some(ttsIsEnglishVoice))IEC_TTS_VOICES_READY=true;
+  }
+  return IEC_TTS_VOICES;
+}
+
+function initTtsVoices(){
+  if(!ttsHasApi())return Promise.resolve([]);
+  refreshTtsVoices();
+  if(IEC_TTS_VOICES_READY)return Promise.resolve(IEC_TTS_VOICES);
+  if(IEC_TTS_INIT_PROMISE)return IEC_TTS_INIT_PROMISE;
+
+  IEC_TTS_INIT_PROMISE=new Promise(resolve=>{
+    let done=false,ticks=0,poll=null,limit=null;
+
+    const finish=()=>{
+      if(done)return;
+      done=true;
+      if(poll)clearInterval(poll);
+      if(limit)clearTimeout(limit);
+      try{window.speechSynthesis.removeEventListener('voiceschanged',changed)}catch(e){}
+      refreshTtsVoices();
+      resolve(IEC_TTS_VOICES);
+    };
+
+    const changed=()=>{
+      refreshTtsVoices();
+      if(IEC_TTS_VOICES.some(ttsIsEnglishVoice))finish();
+    };
+
+    try{window.speechSynthesis.addEventListener('voiceschanged',changed)}catch(e){}
+
+    poll=setInterval(()=>{
+      ticks++;
+      refreshTtsVoices();
+      if(IEC_TTS_VOICES.some(ttsIsEnglishVoice)||ticks>=40)finish();
+    },100);
+
+    limit=setTimeout(finish,4200);
+  }).finally(()=>{IEC_TTS_INIT_PROMISE=null});
+
+  return IEC_TTS_INIT_PROMISE;
+}
+
+function selectTtsVoice(preset){
+  const english=(refreshTtsVoices()||[]).filter(ttsIsEnglishVoice);
+  if(!english.length)return null;
+
+  const p=String(preset||getTtsPreset()).toUpperCase();
+  const target=p==='FEMALE_UK'?'en-gb':'en-us';
+  const gender=p==='FEMALE_UK'?'FEMALE':'MALE';
+
+  const exact=english.filter(v=>ttsVoiceLang(v).startsWith(target));
+  const exactLocal=exact.filter(v=>v&&v.localService!==false);
+  const englishLocal=english.filter(v=>v&&v.localService!==false);
+
+  const desired=a=>a.find(v=>ttsVoiceGender(v.name)===gender);
+  const def=a=>a.find(v=>!!v.default);
+
+  return desired(exactLocal)||
+         def(exactLocal)||
+         exactLocal[0]||
+         desired(exact)||
+         def(exact)||
+         exact[0]||
+         desired(englishLocal)||
+         def(englishLocal)||
+         englishLocal[0]||
+         desired(english)||
+         def(english)||
+         english[0]||
+         null;
+}
+
+function ttsUnsupportedMessage(){
+  const ua=String(navigator.userAgent||'');
+  if(/Android/i.test(ua)){
+    return 'Trình duyệt đang mở liên kết này không hỗ trợ đọc tiếng Anh. Hãy mở đúng liên kết bằng Chrome trên Android.';
+  }
+  if(/iPhone|iPad|iPod/i.test(ua)){
+    return 'Trình duyệt hiện tại không cung cấp chức năng đọc tiếng Anh. Hãy mở liên kết bằng Safari hoặc Chrome trên iPhone/iPad.';
+  }
+  return 'Trình duyệt hiện tại không hỗ trợ đọc văn bản tiếng Anh.';
+}
+
+async function ttsSpeak(text,rate=1,repeat=1){
+  if(!ttsHasApi()){
+    alert(ttsUnsupportedMessage());
+    return false;
+  }
+
+  const content=String(text||'').trim();
+  if(!content)return false;
+
+  const seq=++IEC_TTS_CANCEL_SEQ;
+  stopTts(false);
+
+  await initTtsVoices();
+
+  const preset=getTtsPreset();
+  const voice=selectTtsVoice(preset);
+  const targetLang=preset==='FEMALE_UK'?'en-GB':'en-US';
+
+  if(!voice){
+    alert('Thiết bị chưa tải được giọng English. Hãy kiểm tra giọng English trong cài đặt hệ thống hoặc mở lại trang bằng Chrome/Safari.');
+    return false;
+  }
+
+  let left=Math.max(1,Number(repeat)||1);
+  const safeRate=Math.max(.5,Math.min(1.2,Number(rate)||1));
+
+  return new Promise(resolve=>{
+    const say=()=>{
+      if(seq!==IEC_TTS_CANCEL_SEQ||left<=0){
+        resolve(seq===IEC_TTS_CANCEL_SEQ);
+        return;
+      }
+
+      const u=new SpeechSynthesisUtterance(content);
+      u.voice=voice;
+      u.lang=targetLang;
+      u.rate=safeRate;
+      u.pitch=1;
+      u.volume=1;
+
+      u.onend=()=>{
+        if(seq!==IEC_TTS_CANCEL_SEQ){
+          resolve(false);
+          return;
+        }
+        left--;
+        if(left>0)setTimeout(say,320);
+        else resolve(true);
+      };
+
+      u.onerror=e=>{
+        const err=String(e&&e.error||'');
+        if(err!=='canceled'&&err!=='interrupted'){
+          alert('Không phát được giọng English trên thiết bị này. Hãy thử Chrome/Safari và kiểm tra giọng English trong cài đặt hệ thống.');
+        }
+        resolve(false);
+      };
+
+      try{
+        if(window.speechSynthesis.paused)window.speechSynthesis.resume();
+        setTimeout(()=>{
+          if(seq!==IEC_TTS_CANCEL_SEQ){resolve(false);return;}
+          try{window.speechSynthesis.speak(u)}catch(e){resolve(false);}
+        },140);
+      }catch(e){
+        resolve(false);
+      }
+    };
+
+    say();
+  });
+}
+
+function stopTts(invalidate=true){
+  if(invalidate)IEC_TTS_CANCEL_SEQ++;
+  try{
+    if(ttsHasApi())window.speechSynthesis.cancel();
+  }catch(e){}
+}
+
+if(ttsHasApi()){
+  try{window.speechSynthesis.addEventListener('voiceschanged',refreshTtsVoices)}catch(e){}
+  refreshTtsVoices();
+}
+function normalizeSpeech(value){
+  return String(value||'')
+    .trim()
+    .toLowerCase()
+    .replace(/\b4\b/g,'four')
+    .replace(/\b2\b/g,'two')
+    .replace(/&/g,' and ')
+    .replace(/[-/]/g,' ')
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+function speechTargetVariants(expected){
+  const raw=String(expected||'').trim();
+  const out=[];
+
+  const add=v=>{
+    const n=normalizeSpeech(v);
+    if(n&&!out.includes(n))out.push(n);
+  };
+
+  add(raw);
+  add(raw.replace(/\([^)]*\)/g,' '));
+
+  const parens=[...raw.matchAll(/\(([^)]*)\)/g)].map(m=>m[1]);
+  parens.forEach(p=>add(p));
+
+  return out;
+}
+
+function speechEditDistance(a,b){
+  a=String(a||'');
+  b=String(b||'');
+
+  const m=a.length,n=b.length;
+  if(!m)return n;
+  if(!n)return m;
+
+  let prev=new Array(n+1);
+  let cur=new Array(n+1);
+  for(let j=0;j<=n;j++)prev[j]=j;
+
+  for(let i=1;i<=m;i++){
+    cur[0]=i;
+    for(let j=1;j<=n;j++){
+      const cost=a[i-1]===b[j-1]?0:1;
+      cur[j]=Math.min(
+        prev[j]+1,
+        cur[j-1]+1,
+        prev[j-1]+cost
+      );
+    }
+    const tmp=prev;prev=cur;cur=tmp;
+  }
+
+  return prev[n];
+}
+
+function speechSimilarity(a,b){
+  a=normalizeSpeech(a).replace(/\s+/g,'');
+  b=normalizeSpeech(b).replace(/\s+/g,'');
+
+  if(!a||!b)return 0;
+  if(a===b)return 1;
+
+  const maxLen=Math.max(a.length,b.length);
+  return Math.max(0,1-(speechEditDistance(a,b)/maxLen));
+}
+
+function speechAssistLevel(profile){
+  return Math.max(0,Math.min(10,Number(profile&&profile.boost)||0));
+}
+
+function speechThreshold(profile,target){
+  const assist=speechAssistLevel(profile);
+
+  // Dùng chính STT_*_BOOST trong CONFIG làm mức hỗ trợ IEC khi browser-context tạm tắt.
+  // boost càng cao -> máy càng khoan dung hơn. Không cần sửa code khi muốn chỉnh độ khó.
+  let threshold=.93-(assist*.015);
+
+  const len=normalizeSpeech(target).replace(/\s+/g,'').length;
+  if(len<=4)threshold=Math.max(threshold,.96);
+  else if(len<=7)threshold=Math.max(threshold,.91);
+  else if(len<=11)threshold=Math.max(threshold,.87);
+
+  return Math.max(.75,Math.min(.97,threshold));
+}
+
+function speechMatchDetail(expected,cands,profile){
+  const targets=speechTargetVariants(expected);
+  const candidates=(cands||[])
+    .map(x=>String(x||'').trim())
+    .filter(Boolean);
+
+  let best=0,bestCandidate='',bestTarget='';
+
+  for(const cand of candidates){
+    const nc=normalizeSpeech(cand);
+
+    for(const target of targets){
+      if(nc===target){
+        return {
+          pass:true,
+          exact:true,
+          score:1,
+          threshold:1,
+          candidate:cand,
+          target:target
+        };
+      }
+
+      const score=speechSimilarity(target,nc);
+      if(score>best){
+        best=score;
+        bestCandidate=cand;
+        bestTarget=target;
+      }
+    }
+  }
+
+  const threshold=speechThreshold(profile,bestTarget||expected);
+
+  return {
+    pass:best>=threshold,
+    exact:false,
+    score:best,
+    threshold:threshold,
+    candidate:bestCandidate,
+    target:bestTarget||normalizeSpeech(expected)
+  };
+}
+
+function speechMatches(expected,cands,profile){
+  return speechMatchDetail(expected,cands,profile).pass;
+}
+
+function buildRecognition(profile){
   const SR=window.webkitSpeechRecognition||window.SpeechRecognition;
 
   if(!SR){
@@ -39,7 +403,6 @@ function buildRecognition(profile,phrases,allowContext=true){
 
   const r=new SR();
 
-  // Recognition chuẩn - giữ nguyên phần đang hoạt động ổn
   r.lang=String(
     (profile&&profile.language) ||
     (IEC_CONFIG&&IEC_CONFIG.STT_LANG) ||
@@ -54,56 +417,18 @@ function buildRecognition(profile,phrases,allowContext=true){
     Math.min(5,Number(profile&&profile.alternatives)||1)
   );
 
-  // Context V4 chỉ được áp dụng khi browser hỗ trợ API chuẩn.
-  // Nếu không hỗ trợ, recognition chuẩn phía trên vẫn hoạt động.
+  // Tạm thời không dùng SpeechRecognitionPhrase/r.phrases:
+  // API contextual biasing của browser chưa ổn định trên các thiết bị đã test.
   r.__iecContextApplied=false;
 
-  const canUseContext=
-    allowContext!==false &&
-    !!(profile&&profile.enabled) &&
-    Array.isArray(phrases) &&
-    phrases.length>0 &&
-    ('phrases' in r) &&
-    typeof window.SpeechRecognitionPhrase==='function';
-
-  if(canUseContext){
-    try{
-      const boost=Math.max(
-        0,
-        Math.min(10,Number(profile&&profile.boost)||0)
-      );
-
-      const cleanPhrases=[...new Set(
-        phrases
-          .map(p=>String(p||'').trim())
-          .filter(Boolean)
-      )];
-
-      if(cleanPhrases.length){
-        r.phrases=cleanPhrases.map(
-          p=>new window.SpeechRecognitionPhrase(p,boost)
-        );
-        r.__iecContextApplied=true;
-        console.log('[IEC V4 STT] CONTEXT ON | phrases='+cleanPhrases.length+' | boost='+boost, cleanPhrases);
-      }
-    }catch(e){
-      // Context lỗi thì bỏ context, tuyệt đối không làm hỏng STT chuẩn.
-      r.__iecContextApplied=false;
-      console.warn('[IEC V4 STT] CONTEXT FAILED -> STANDARD STT',e);
-      try{r.phrases=[]}catch(_){}
-    }
-  }
-if(!r.__iecContextApplied){
-  console.log('[IEC V4 STT] CONTEXT OFF -> STANDARD STT');
-}
   return r;
 }
+
 function oneShotSpeech(expected,profile,phrases,onStatus){
   return new Promise((resolve,reject)=>{
     let r=null;
     let finalTop='',alts=[],heard='';
     let settled=false;
-    let allowContext=true;
 
     const finishError=(err)=>{
       if(settled)return;
@@ -118,108 +443,92 @@ function oneShotSpeech(expected,profile,phrases,onStatus){
       resolve({
         heard:finalTop||heard,
         alternatives:alts,
-        pass:speechMatches(expected,c)
+        pass:speechMatches(expected,c,profile)
       });
     };
 
-    const start=()=>{
-      if(settled)return;
+    try{
+      r=buildRecognition(profile);
+    }catch(e){
+      finishError(e);
+      return;
+    }
 
-      try{
-        r=buildRecognition(profile,phrases,allowContext);
-      }catch(e){
-        finishError(e);
+    r.onstart=()=>{
+      if(onStatus)onStatus('ĐANG NGHE','');
+    };
+
+    r.onaudiostart=()=>{
+      if(onStatus)onStatus('MIC ĐANG THU',heard);
+    };
+
+    r.onspeechstart=()=>{
+      if(onStatus)onStatus('ĐÃ NHẬN GIỌNG NÓI',heard);
+    };
+
+    r.onresult=e=>{
+      let interim='';
+
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const res=e.results[i];
+
+        if(res.isFinal){
+          finalTop=String(res[0]&&res[0].transcript||'').trim();
+          alts=[];
+
+          for(let j=0;j<res.length;j++){
+            const t=String(res[j]&&res[j].transcript||'').trim();
+            if(t&&!alts.includes(t))alts.push(t);
+          }
+        }else{
+          interim+=String(res[0]&&res[0].transcript||'');
+        }
+      }
+
+      heard=finalTop||interim.trim()||heard;
+      if(onStatus)onStatus('ĐANG NGHE',heard);
+    };
+
+    r.onnomatch=()=>{
+      if(onStatus)onStatus('CÓ TIẾNG NÓI – CHƯA NHẬN ĐƯỢC CHỮ',heard);
+    };
+
+    r.onerror=e=>{
+      const code=String(e&&e.error||'');
+
+      if(code==='no-speech'){
+        if(onStatus)onStatus('KHÔNG PHÁT HIỆN TIẾNG NÓI',heard);
         return;
       }
 
-      r.onstart=()=>{
-        if(onStatus)onStatus('ĐANG NGHE','');
-      };
+      if(code==='aborted')return;
 
-      r.onaudiostart=()=>{
-        if(onStatus)onStatus('MIC ĐANG THU',heard);
-      };
+      let msg='Lỗi nhận diện giọng nói: '+code;
 
-      r.onspeechstart=()=>{
-        if(onStatus)onStatus('ĐÃ NHẬN GIỌNG NÓI',heard);
-      };
-
-      r.onresult=e=>{
-        let interim='';
-
-        for(let i=e.resultIndex;i<e.results.length;i++){
-          const res=e.results[i];
-
-          if(res.isFinal){
-            finalTop=String(res[0]&&res[0].transcript||'').trim();
-            alts=[];
-
-            for(let j=0;j<res.length;j++){
-              const t=String(res[j]&&res[j].transcript||'').trim();
-              if(t&&!alts.includes(t))alts.push(t);
-            }
-          }else{
-            interim+=String(res[0]&&res[0].transcript||'');
-          }
-        }
-
-        heard=finalTop||interim.trim()||heard;
-        if(onStatus)onStatus('ĐANG NGHE',heard);
-      };
-
-      r.onnomatch=()=>{
-        if(onStatus)onStatus('CÓ TIẾNG NÓI – CHƯA NHẬN ĐƯỢC CHỮ',heard);
-      };
-
-      r.onerror=e=>{
-        const code=String(e&&e.error||'');
-        console.error('[IEC V4 STT] ONERROR | code='+code+' | context='+(r&&r.__iecContextApplied)+' | allowContext='+allowContext,e);
-        // Chrome có thể hỗ trợ property .phrases nhưng model nhận diện hiện tại
-        // lại không hỗ trợ contextual biasing. Fallback ngay, không tính là lỗi.
-        if(code==='phrases-not-supported' && r && r.__iecContextApplied && allowContext){
-          allowContext=false;
-          try{r.onend=null;r.abort()}catch(_){}
-          r=null;
-          if(onStatus)onStatus('ĐANG NGHE','');
-          setTimeout(start,100);
-          return;
-        }
-
-        if(code==='no-speech'){
-          if(onStatus)onStatus('KHÔNG PHÁT HIỆN TIẾNG NÓI',heard);
-          return;
-        }
-
-        if(code==='aborted')return;
-
-        let msg='Lỗi nhận diện giọng nói: '+code;
-        if(code==='not-allowed'||code==='service-not-allowed'){
-          msg='Micro hoặc dịch vụ nhận diện giọng nói chưa được cho phép.';
-        }else if(code==='audio-capture'){
-          msg='Không lấy được tín hiệu từ microphone.';
-        }else if(code==='network'){
-          msg='Lỗi kết nối dịch vụ nhận diện giọng nói.';
-        }else if(code==='language-not-supported'){
-          msg='Trình duyệt không hỗ trợ ngôn ngữ nhận diện đang cấu hình.';
-        }
-
-        if(onStatus)onStatus('LỖI STT: '+code,heard);
-        finishError(new Error(msg));
-      };
-
-      r.onend=()=>{
-        if(settled)return;
-        finishOk();
-      };
-
-      try{
-        r.start();
-      }catch(e){
-        finishError(e);
+      if(code==='not-allowed'||code==='service-not-allowed'){
+        msg='Micro hoặc dịch vụ nhận diện giọng nói chưa được cho phép.';
+      }else if(code==='audio-capture'){
+        msg='Không lấy được tín hiệu từ microphone.';
+      }else if(code==='network'){
+        msg='Lỗi kết nối dịch vụ nhận diện giọng nói.';
+      }else if(code==='language-not-supported'){
+        msg='Trình duyệt không hỗ trợ ngôn ngữ nhận diện đang cấu hình.';
       }
+
+      if(onStatus)onStatus('LỖI STT: '+code,heard);
+      finishError(new Error(msg));
     };
 
-    start();
+    r.onend=()=>{
+      if(settled)return;
+      finishOk();
+    };
+
+    try{
+      r.start();
+    }catch(e){
+      finishError(e);
+    }
   });
 }
 
@@ -243,11 +552,6 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
     let deadline=null;
     let maxTimer=null;
     let againTimer=null;
-
-    // Contextual biasing có thể không được model Chrome hỗ trợ dù property .phrases tồn tại.
-    // Bắt đầu có context; nếu Chrome báo không hỗ trợ / no-speech bất thường,
-    // tự fallback sang recognition thường trong cùng lượt, không tính lỗi cho SV.
-    let allowContext=true;
 
     const reactionLimit=Number(IEC_CONFIG.REACTION_LIMIT_SEC||20);
     const restartWord=String(IEC_CONFIG.RESTART_WORD||'AGAIN').trim().toLowerCase();
@@ -315,7 +619,7 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
       }else if(reaction>reactionLimit){
         result='RED';
         fail='REACTION';
-      }else if(word.english&&speechMatches(word.english,cands)){
+      }else if(word.english&&speechMatches(word.english,cands,profile)){
         result='PASS';
       }else if(!word.english){
         result='RECORDED';
@@ -344,7 +648,7 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
 
       let localRec;
       try{
-        localRec=buildRecognition(profile,phrases,allowContext);
+        localRec=buildRecognition(profile);
       }catch(e){
         technicalFail(String(e.message||e));
         return;
@@ -452,26 +756,7 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
 
         const err=String(e&&e.error||'');
 
-        // Đây là điểm lỗi chính của bản cũ:
-        // contextual biasing là experimental và Chrome có thể trả phrases-not-supported.
-        // Bản cũ bỏ qua lỗi này nên giao diện chờ hết giờ như thể micro không thu.
-        if(err==='phrases-not-supported' && localRec.__iecContextApplied && allowContext){
-          allowContext=false;
-          stopRec(localRec);
-          emit('ĐANG NGHE','');
-          setTimeout(()=>start(mode),100);
-          return;
-        }
-
-        // Nếu model có context nhưng phiên đầu trả no-speech, thử lại ngay một lần
-        // bằng recognition chuẩn giống Google demo.
         if(err==='no-speech'){
-          if(localRec.__iecContextApplied && allowContext){
-            allowContext=false;
-            stopRec(localRec);
-            emit('ĐANG NGHE','');
-            setTimeout(()=>start(mode),100);
-          }
           return;
         }
 
@@ -489,7 +774,6 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
           return;
         }
 
-        // Không được nuốt lỗi lạ. Nếu có lỗi mới của Chrome, phải hiện ra ngay.
         technicalFail('Lỗi nhận diện giọng nói: '+(err||'không xác định')+'. Lượt thi chưa bị tính.');
       };
 
@@ -509,22 +793,10 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
       };
 
       try{
-  localRec.start();
-}catch(e){
-
-  // Context không khởi động được -> fallback sang STT chuẩn trong cùng lượt
-  if(localRec.__iecContextApplied && allowContext){
-    allowContext=false;
-    stopRec(localRec);
-    emit('ĐANG NGHE','');
-    setTimeout(()=>start(mode),100);
-    return;
-  }
-
-  technicalFail(
-    'Không khởi động được micro/nhận diện giọng nói. Lượt thi chưa bị tính.'
-  );
-}
+        localRec.start();
+      }catch(e){
+        technicalFail('Không khởi động được micro/nhận diện giọng nói. Lượt thi chưa bị tính.');
+      }
     };
 
     deadline=setTimeout(()=>finish('REACTION'),reactionLimit*1000);
