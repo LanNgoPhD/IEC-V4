@@ -84,14 +84,18 @@ function buildRecognition(profile,phrases,allowContext=true){
           p=>new window.SpeechRecognitionPhrase(p,boost)
         );
         r.__iecContextApplied=true;
+        console.log('[IEC V4 STT] CONTEXT ON | phrases='+cleanPhrases.length+' | boost='+boost, cleanPhrases);
       }
     }catch(e){
       // Context lỗi thì bỏ context, tuyệt đối không làm hỏng STT chuẩn.
       r.__iecContextApplied=false;
+      console.warn('[IEC V4 STT] CONTEXT FAILED -> STANDARD STT',e);
       try{r.phrases=[]}catch(_){}
     }
   }
-
+if(!r.__iecContextApplied){
+  console.log('[IEC V4 STT] CONTEXT OFF -> STANDARD STT');
+}
   return r;
 }
 function oneShotSpeech(expected,profile,phrases,onStatus){
