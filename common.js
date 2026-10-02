@@ -162,26 +162,23 @@ function selectTtsVoice(preset){
   const desired=a=>a.find(v=>ttsVoiceGender(v.name)===gender);
   const def=a=>a.find(v=>!!v.default);
 
-  // iPhone/iPad: ưu tiên giọng native English ổn định thay vì ép giọng nam.
-  // Một số voice iOS nghe méo/robotic khi bị ép theo preset khác locale thực tế.
+  // iPhone/iPad:
+  // Giữ nguyên đúng nhóm voice của bản trước mà người dùng xác nhận nghe rõ/ổn.
+  // Chỉ đảo ánh xạ hai lựa chọn trên iPhone vì thiết bị thực tế đang phát ngược Nam/Nữ.
+  // Không ép sang các voice khác để tránh giọng nhỏ/méo.
   if(ttsIsIOS()){
-    // iPhone/iPad: map đúng giới tính theo preset.
-    // MALE_US  -> ưu tiên giọng nam en-US.
-    // FEMALE_UK -> ưu tiên giọng nữ en-GB.
     const iosPreferred=p==='FEMALE_UK'
-      ? ['serena','kate','martha']
-      : ['alex','aaron','fred'];
+      ? ['samantha','ava','allison','susan','nicky']
+      : ['serena','kate','martha','daniel'];
 
-    return byNames(exactLocal,iosPreferred)||
-           desired(exactLocal)||
-           byNames(exact,iosPreferred)||
-           desired(exact)||
+    // Trên iPhone ưu tiên tìm voice theo tên trong toàn bộ English trước,
+    // rồi mới fallback theo locale/default. Điều này giữ lại voice đã nghe tốt trên máy.
+    return byNames(englishLocal,iosPreferred)||
+           byNames(english,iosPreferred)||
            def(exactLocal)||
            exactLocal[0]||
            def(exact)||
            exact[0]||
-           desired(englishLocal)||
-           desired(english)||
            def(englishLocal)||
            englishLocal[0]||
            def(english)||
@@ -282,7 +279,7 @@ async function ttsSpeak(text,rate=1,repeat=1){
       u.lang=actualLang;
       u.rate=safeRate;
       u.pitch=1;
-      u.volume=1;
+      u.volume=1; // mức tối đa SpeechSynthesis cho phép
 
       u.onend=()=>{
         if(seq!==IEC_TTS_CANCEL_SEQ){
