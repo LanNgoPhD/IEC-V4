@@ -509,10 +509,22 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
       };
 
       try{
-        localRec.start();
-      }catch(e){
-        technicalFail('Không khởi động được micro/nhận diện giọng nói. Lượt thi chưa bị tính.');
-      }
+  localRec.start();
+}catch(e){
+
+  // Context không khởi động được -> fallback sang STT chuẩn trong cùng lượt
+  if(localRec.__iecContextApplied && allowContext){
+    allowContext=false;
+    stopRec(localRec);
+    emit('ĐANG NGHE','');
+    setTimeout(()=>start(mode),100);
+    return;
+  }
+
+  technicalFail(
+    'Không khởi động được micro/nhận diện giọng nói. Lượt thi chưa bị tính.'
+  );
+}
     };
 
     deadline=setTimeout(()=>finish('REACTION'),reactionLimit*1000);
