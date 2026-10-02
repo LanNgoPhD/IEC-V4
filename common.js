@@ -28,7 +28,7 @@ function stopTts(){try{window.speechSynthesis.cancel()}catch(e){}}
 if('speechSynthesis' in window){try{window.speechSynthesis.addEventListener('voiceschanged',refreshTtsVoices)}catch(e){}refreshTtsVoices()}
 function normalizeSpeech(value){return String(value||'').trim().toLowerCase().replace(/\b4\b/g,'four').replace(/\b2\b/g,'two').replace(/[-/]/g,'').replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,'')}
 function speechMatches(expected,cands){const t=normalizeSpeech(expected);return !!t&&(cands||[]).some(x=>normalizeSpeech(x)===t)}
-function buildRecognition(profile,phrases){
+function buildRecognition(profile,phrases,allowContext=true){
   const SR=window.webkitSpeechRecognition||window.SpeechRecognition;
 
   if(!SR){
@@ -39,6 +39,7 @@ function buildRecognition(profile,phrases){
 
   const r=new SR();
 
+  // Recognition chuẩn - giữ nguyên phần đang hoạt động ổn
   r.lang=String(
     (profile&&profile.language) ||
     (IEC_CONFIG&&IEC_CONFIG.STT_LANG) ||
@@ -52,6 +53,44 @@ function buildRecognition(profile,phrases){
     1,
     Math.min(5,Number(profile&&profile.alternatives)||1)
   );
+
+  // Context V4 chỉ được áp dụng khi browser hỗ trợ API chuẩn.
+  // Nếu không hỗ trợ, recognition chuẩn phía trên vẫn hoạt động.
+  r.__iecContextApplied=false;
+
+  const canUseContext=
+    allowContext!==false &&
+    !!(profile&&profile.enabled) &&
+    Array.isArray(phrases) &&
+    phrases.length>0 &&
+    ('phrases' in r) &&
+    typeof window.SpeechRecognitionPhrase==='function';
+
+  if(canUseContext){
+    try{
+      const boost=Math.max(
+        0,
+        Math.min(10,Number(profile&&profile.boost)||0)
+      );
+
+      const cleanPhrases=[...new Set(
+        phrases
+          .map(p=>String(p||'').trim())
+          .filter(Boolean)
+      )];
+
+      if(cleanPhrases.length){
+        r.phrases=cleanPhrases.map(
+          p=>new window.SpeechRecognitionPhrase(p,boost)
+        );
+        r.__iecContextApplied=true;
+      }
+    }catch(e){
+      // Context lỗi thì bỏ context, tuyệt đối không làm hỏng STT chuẩn.
+      r.__iecContextApplied=false;
+      try{r.phrases=[]}catch(_){}
+    }
+  }
 
   return r;
 }
