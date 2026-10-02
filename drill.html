@@ -1,0 +1,102 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>IEC V4 – Luyện tập</title><link rel="stylesheet" href="styles.css?v=4.0.1"><script src="config.js?v=4.0.1"></script><script src="common.js?v=4.0.1"></script></head><body><div class="wrap">
+<div class="card"><h1>LUYỆN TẬP – SỬA VIẾT & LUYỆN NÓI</h1><div class="sub">ĐỎ phải đạt viết trước → VÀNG → luyện/thi nói → XANH</div><div id="meta" class="statusbar"></div><div class="row"><button id="greenBtn" class="secondary">XEM KẾT QUẢ XANH LÁ</button></div></div>
+<div id="greenCard" class="card hidden"><h2>Kết quả trợ giảng xem xét</h2><table><thead><tr><th>Từ</th><th>Kết quả</th><th>Lỗi</th><th>Nhận xét</th></tr></thead><tbody id="greenRows"></tbody></table><div id="greenEmpty" class="muted"></div></div>
+<div id="redCard" class="card hidden"><div class="row" style="justify-content:space-between"><div><h2>1. ĐỎ – sửa viết</h2><div class="muted">Luyện không giới hạn. Khi viết đúng, từ chuyển ngay sang VÀNG trong cùng phiên luyện tập.</div></div><div class="row tts-settings"><label>Giọng đọc</label><select id="voicePreset" aria-label="Giọng đọc"><option>Nam – Mỹ</option><option>Nữ – Anh</option></select><label>Tốc độ</label><select id="rate" aria-label="Tốc độ đọc"></select></div></div><div id="redStudy"></div><button id="writeBtn">KIỂM TRA VIẾT ĐỎ</button></div>
+<div id="writeCard" class="card hidden"><h2>Kiểm tra viết ĐỎ</h2><div id="writeQuestions"></div><button id="writeSubmit">NỘP KIỂM TRA VIẾT</button><div id="writeMsg" class="msg"></div></div>
+<div id="yellowCard" class="card hidden"><div class="row" style="justify-content:space-between"><div><h2>2. VÀNG – luyện nói</h2><div class="muted">Được nhìn tiếng Anh/phiên âm và luyện nói thoải mái. Luyện nói không làm đổi trạng thái.</div></div><div id="attemptInfo" class="pill"></div></div><div id="yellowList"></div><div class="row"><button id="speakTestBtn">THI NÓI LUYỆN TẬP</button></div><div id="speakMsg" class="msg"></div></div>
+<div id="speakTestCard" class="card hidden"><h2>THI NÓI LUYỆN TẬP</h2><div class="muted">Không nhìn tiếng Anh/phiên âm. Mỗi VÀNG được kiểm tra một lần trong lượt này.</div><div id="speakProgress" class="tag"></div><div id="speakPrompt" class="bigword">---</div><div id="speakTimer" class="timer"></div><div id="speakStatus" class="statusbar"></div><div id="speakResult" class="speech-result"></div><div class="info-grid"><b>Máy nghe được</b><span id="speakHeard">---</span><b>Nói lại (lệnh AGAIN)</b><span id="speakAgain">---</span></div></div>
+<div id="clearCard" class="card hidden"><h2>Đã xử lý hết nội dung luyện tập hiện tại</h2><div class="msg ok">Không còn ĐỎ hoặc VÀNG cần xử lý trong lúc này.</div></div>
+</div><iframe name="submitFrame" class="hidden"></iframe><script>
+let CTX,DATA,activePost='';
+document.addEventListener('DOMContentLoaded',async()=>{window.addEventListener('message',handleMessage);greenBtn.onclick=toggleGreen;writeBtn.onclick=startWrite;writeSubmit.onclick=submitWrite;speakTestBtn.onclick=startSpeakTest;try{CTX=requireContext();await loadClientConfig();setupRates();setupTtsPresetSelect(voicePreset);await loadData()}catch(e){meta.textContent=String(e.message||e)}});
+function setupRates(){const rates=IEC_CONFIG.TTS_RATES&&IEC_CONFIG.TTS_RATES.length?IEC_CONFIG.TTS_RATES:[.5,.7,.85,1];rate.innerHTML='';rates.forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=Number(r).toFixed(2).replace(/0$/,'')+'×';if(Math.abs(Number(r)-Number(IEC_CONFIG.TTS_DEFAULT_RATE||.85))<.001)o.selected=true;rate.appendChild(o)})}
+async function loadData(){DATA=await jsonp(API_BASE+'?api=drill-data&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&run='+encodeURIComponent(CTX.runId)+'&token='+encodeURIComponent(CTX.token));if(!DATA||DATA.ok===false)throw new Error(DATA&&DATA.error||'Không tải được phần luyện tập');meta.textContent='NGÀY '+DATA.run.programDay+' · ĐỎ '+DATA.redCount+' · VÀNG '+DATA.yellowCount;writeCard.classList.add('hidden');speakTestCard.classList.add('hidden');renderRed();renderYellow();clearCard.classList.toggle('hidden',DATA.redCount+DATA.yellowCount>0)}
+function renderRed(){redCard.classList.toggle('hidden',!DATA.redItems.length);redStudy.innerHTML='';DATA.redItems.forEach((it,i)=>{const d=document.createElement('div');d.className='item';d.innerHTML='<div class="tag">'+String(i+1).padStart(2,'0')+' · '+it.redType+' · '+it.contentId+'</div><div class="vn"></div><div class="en"></div><div class="ipa"></div><div class="tts"><button class="secondary listen">🔊 Nghe</button><button class="secondary repeat">🔁 Nghe ×'+Number(IEC_CONFIG.TTS_REPEAT||3)+'</button></div>';d.querySelector('.vn').textContent=it.vietnamese;d.querySelector('.en').textContent=it.english;d.querySelector('.ipa').textContent=it.ipa||'';d.querySelector('.listen').onclick=()=>ttsSpeak(it.english,Number(rate.value),1);d.querySelector('.repeat').onclick=()=>ttsSpeak(it.english,Number(rate.value),Number(IEC_CONFIG.TTS_REPEAT||3));redStudy.appendChild(d)})}
+function startWrite(){stopTts();redCard.classList.add('hidden');writeCard.classList.remove('hidden');writeQuestions.innerHTML='';DATA.redItems.forEach((it,i)=>{const r=document.createElement('div');r.className='test-row';r.innerHTML='<div class="num">'+String(i+1).padStart(2,'0')+'</div><div class="vn"></div><input type="text" autocomplete="off" placeholder="Nhập thuật ngữ tiếng Anh">';r.querySelector('.vn').textContent=it.vietnamese;r.querySelector('input').dataset.contentId=it.contentId;writeQuestions.appendChild(r)});writeQuestions.querySelector('input')?.focus()}
+function submitWrite(){const answers=[...writeQuestions.querySelectorAll('input')].map(x=>({contentId:x.dataset.contentId,answer:x.value.trim()}));writeSubmit.disabled=true;activePost='WRITE';setMsg(writeMsg,'Đang lưu kết quả viết...');postPayload({api:'drill-submit',classId:CTX.classId,studentId:CTX.studentId,runId:CTX.runId,token:CTX.token,answers:answers,clientKey:clientKey('DRILL_WRITE')})}
+function renderYellow(){yellowCard.classList.toggle('hidden',!DATA.yellowItems.length);yellowList.innerHTML='';attemptInfo.textContent='Thi nói: đã dùng '+DATA.speakAttempts.used+'/'+DATA.speakAttempts.max+' · còn '+DATA.speakAttempts.remaining+' lượt';speakTestBtn.disabled=!DATA.yellowItems.length||DATA.speakAttempts.remaining<=0;DATA.yellowItems.forEach((it,i)=>{const d=document.createElement('div');d.className='item';d.innerHTML='<div class="tag">'+String(i+1).padStart(2,'0')+' · VÀNG · '+it.contentId+'</div><div class="vn"></div><div class="en"></div><div class="ipa"></div><div class="tts"><button class="secondary listen">🔊 Nghe</button><button class="secondary repeat">🔁 Nghe ×'+Number(IEC_CONFIG.TTS_REPEAT||3)+'</button><button class="secondary practice">🎤 Luyện nói</button><span class="practiceResult muted"></span></div>';d.querySelector('.vn').textContent=it.vietnamese;d.querySelector('.en').textContent=it.english;d.querySelector('.ipa').textContent=it.ipa||'';d.querySelector('.listen').onclick=()=>ttsSpeak(it.english,Number(rate.value),1);d.querySelector('.repeat').onclick=()=>ttsSpeak(it.english,Number(rate.value),Number(IEC_CONFIG.TTS_REPEAT||3));d.querySelector('.practice').onclick=async()=>{const out=d.querySelector('.practiceResult');out.textContent='Đang nghe...';try{const r=await oneShotSpeech(it.english,DATA.practiceSpeech.profile,DATA.practiceSpeech.contextPhrases,(st,h)=>{out.textContent=h?'Máy nghe: '+h:st});out.textContent=(r.pass?'ĐẠT NHẬN DIỆN · ':'CHƯA ĐẠT · ')+(r.heard||'không nhận được chữ')}catch(e){out.textContent=String(e.message||e)}};yellowList.appendChild(d)})}
+async function startSpeakTest(){
+  speakTestBtn.disabled=true;
+  setMsg(speakMsg,'Đang chuẩn bị lượt thi nói...');
+  try{
+    const d=await jsonp(
+      API_BASE+'?api=drill-speak-data'
+      +'&class='+encodeURIComponent(CTX.classId)
+      +'&student='+encodeURIComponent(CTX.studentId)
+      +'&run='+encodeURIComponent(CTX.runId)
+      +'&token='+encodeURIComponent(CTX.token)
+    );
+
+    if(!d||d.ok===false)throw new Error(d&&d.error||'Không mở được lượt thi nói');
+
+    if(!d.available){
+      setMsg(speakMsg,d.message||'Không có lượt thi nói.','err');
+      speakTestBtn.disabled=d.attempts&&d.attempts.remaining<=0;
+      return;
+    }
+
+    yellowCard.classList.add('hidden');
+    redCard.classList.add('hidden');
+    speakTestCard.classList.remove('hidden');
+
+    const results=await runOfficialSpeechTest(
+      d.words,
+      d.profile,
+      d.contextPhrases,
+      {
+        beforeWord:(w,i,n)=>{
+          speakProgress.textContent=(i+1)+' / '+n;
+          speakPrompt.textContent=w.vietnamese;
+          speakStatus.textContent='CHUẨN BỊ';
+          speakHeard.textContent='---';
+          speakTimer.textContent='';
+          speakAgain.textContent='Có thể nói '+String(IEC_CONFIG.RESTART_WORD||'AGAIN')
+            +' tối đa '+Number(IEC_CONFIG.MAX_RESTART||1)+' lần trong cửa phản xạ';
+          speakResult.className='speech-result';
+          speakResult.textContent='';
+        },
+
+        status:(st,h,info)=>{
+          speakStatus.textContent=st;
+          speakHeard.textContent=h||'---';
+          speakTimer.textContent=Number(info.elapsed||0).toFixed(2)+' s';
+          speakAgain.textContent='AGAIN '+Number(info.restartCount||0)
+            +' / '+Number(IEC_CONFIG.MAX_RESTART||1);
+          document.getElementById('speakResult').className='speech-result listening';
+document.getElementById('speakResult').textContent='🎤 '+st+(h?' · '+h:'');
+        },
+
+        afterWord:(r)=>{
+          if(r.result==='PASS'){
+            document.getElementById('speakResult').className='speech-result blue';
+document.getElementById('speakResult').textContent='XANH · ĐẠT';
+          }else{
+            speakResult.className='speech-result yellow';
+            speakResult.textContent='VÀNG · THI NÓI LẠI';
+          }
+          speakStatus.textContent='ĐÃ GHI NHẬN';
+        }
+      }
+    );
+
+    activePost='SPEAK';
+    setMsg(speakMsg,'Đang lưu kết quả thi nói...');
+    postPayload({
+      api:'drill-speak-submit',
+      classId:CTX.classId,
+      studentId:CTX.studentId,
+      runId:CTX.runId,
+      token:CTX.token,
+      sessionId:d.sessionId,
+      results:results
+    });
+
+  }catch(e){
+    speakTestBtn.disabled=false;
+    setMsg(speakMsg,'LỖI: '+String(e.message||e),'err');
+  }
+}
+
+function handleMessage(e){const d=e.data;if(!d||typeof d!=='object'||d.ok===undefined)return;if(activePost==='WRITE'){writeSubmit.disabled=false;if(!d.ok){setMsg(writeMsg,'LỖI: '+String(d.error||'Không xác định'),'err');return}setMsg(writeMsg,'Đã chuyển '+Number(d.promoted||0)+' từ ĐỎ → VÀNG. Còn ĐỎ: '+Number(d.remaining||0)+'.','ok');setTimeout(loadData,500);return}if(activePost==='SPEAK'){if(!d.ok){setMsg(speakMsg,'LỖI: '+String(d.error||'Không xác định'),'err');return}setMsg(speakMsg,'Lượt thi đã lưu. XANH='+Number(d.blue||0)+' · còn VÀNG='+Number(d.yellow||0)+'.','ok');setTimeout(loadData,700)}}
+async function toggleGreen(){const card=greenCard;if(!card.classList.contains('hidden')){card.classList.add('hidden');return}const d=await jsonp(API_BASE+'?api=green-results&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&token='+encodeURIComponent(CTX.token));if(!d||d.ok===false){alert(d&&d.error||'Không tải được kết quả');return}greenRows.innerHTML='';greenEmpty.textContent=d.items.length?'':'Chưa có kết quả XANH LÁ đã được trợ giảng xem xét.';d.items.forEach(x=>{const tr=document.createElement('tr');tr.innerHTML='<td></td><td></td><td></td><td></td>';tr.children[0].textContent=x.word;tr.children[1].textContent=viState(x.result);tr.children[1].className=x.result==='YELLOW'?'resultYellow':'resultRed';tr.children[2].textContent=x.error||'—';tr.children[3].textContent=x.comment||'—';greenRows.appendChild(tr)});card.classList.remove('hidden')}
+</script></body></html>
