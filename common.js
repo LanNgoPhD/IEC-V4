@@ -28,40 +28,33 @@ function stopTts(){try{window.speechSynthesis.cancel()}catch(e){}}
 if('speechSynthesis' in window){try{window.speechSynthesis.addEventListener('voiceschanged',refreshTtsVoices)}catch(e){}refreshTtsVoices()}
 function normalizeSpeech(value){return String(value||'').trim().toLowerCase().replace(/\b4\b/g,'four').replace(/\b2\b/g,'two').replace(/[-/]/g,'').replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,'')}
 function speechMatches(expected,cands){const t=normalizeSpeech(expected);return !!t&&(cands||[]).some(x=>normalizeSpeech(x)===t)}
-function buildRecognition(profile,phrases,useContext){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR)throw new Error('Trình duyệt này chưa hỗ trợ nhận diện giọng nói. Hãy dùng Chrome/Edge phiên bản mới.');
+function buildRecognition(profile,phrases){
+  const SR=window.webkitSpeechRecognition||window.SpeechRecognition;
+
+  if(!SR){
+    throw new Error(
+      'Trình duyệt này chưa hỗ trợ nhận diện giọng nói. Hãy dùng Chrome/Edge phiên bản mới.'
+    );
+  }
 
   const r=new SR();
-  r.lang=String((profile&&profile.language)||(IEC_CONFIG&&IEC_CONFIG.STT_LANG)||'en-US');
+
+  r.lang=String(
+    (profile&&profile.language) ||
+    (IEC_CONFIG&&IEC_CONFIG.STT_LANG) ||
+    'en-US'
+  );
+
   r.continuous=false;
   r.interimResults=true;
-  r.maxAlternatives=Math.max(1,Math.min(5,Number(profile&&profile.alternatives)||1));
 
-  // Contextual biasing là tính năng experimental.
-  // Chỉ bật khi trình duyệt có constructor chuẩn SpeechRecognitionPhrase.
-  // Nếu model không hỗ trợ, caller sẽ tự fallback về recognition thường.
-  r.__iecContextApplied=false;
-  const allowContext=useContext!==false;
-  if(
-    allowContext &&
-    profile && profile.enabled &&
-    Array.isArray(phrases) && phrases.length &&
-    ('phrases' in r) &&
-    typeof window.SpeechRecognitionPhrase==='function'
-  ){
-    try{
-      const boost=Math.max(0,Math.min(10,Number(profile.boost)||0));
-      r.phrases=phrases.map(p=>new window.SpeechRecognitionPhrase(String(p),boost));
-      r.__iecContextApplied=true;
-    }catch(e){
-      r.__iecContextApplied=false;
-    }
-  }
+  r.maxAlternatives=Math.max(
+    1,
+    Math.min(5,Number(profile&&profile.alternatives)||1)
+  );
 
   return r;
 }
-
 function oneShotSpeech(expected,profile,phrases,onStatus){
   return new Promise((resolve,reject)=>{
     let r=null;
