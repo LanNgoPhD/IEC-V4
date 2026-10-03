@@ -617,23 +617,88 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
   return new Promise((resolve,reject)=>{
     let rec=null;
     let locked=false;
-    let wordStart=performance.now();
+    const wordStart=performance.now();
+
     let firstSpeech=null;
     let firstAnswer='';
     let finalAnswer='';
     let alternatives=[];
     let restartCount=0;
-    let voice=false;
+    let officialVoice=false;
     let current='';
-    let deadline=null;
+
+    let mode='PRIMARY';
+    let phaseSpeechStart=null;
+    let phaseStartDeadlineAt=null;
+    let againWindowDeadlineAt=null;
+
+    let phaseStartTimer=null;
     let maxTimer=null;
     let againTimer=null;
+    let countdownTicker=null;
+    let phaseSpeechDeadlineAt=null;
 
-    const reactionLimit=Number(IEC_CONFIG.REACTION_LIMIT_SEC||20);
-    const restartWord=String(IEC_CONFIG.RESTART_WORD||'AGAIN').trim().toLowerCase();
-    const maxRestart=Number(IEC_CONFIG.MAX_RESTART||1);
-    const silence=Number(IEC_CONFIG.SILENCE_END_SEC||5);
-    const maxSpeech=Number(IEC_CONFIG.MAX_SPEECH_SEC||20);
+    const reactionLimit=Math.max(1,Number(IEC_CONFIG&&IEC_CONFIG.REACTION_LIMIT_SEC)||20);
+    const reactionDeadlineAt=wordStart+reactionLimit*1000;
+    const restartWord=String((IEC_CONFIG&&IEC_CONFIG.RESTART_WORD)||'AGAIN').trim();
+
+    // MAX_RESTART phải nhận đúng cả giá trị 0 từ Sheet; không dùng "|| 1".
+    const rawMaxRestart=Number(IEC_CONFIG&&IEC_CONFIG.MAX_RESTART);
+    const maxRestart=Number.isFinite(rawMaxRestart)
+      ?Math.max(0,Math.floor(rawMaxRestart))
+      :1;
+
+    const silence=Math.max(.2,Number(IEC_CONFIG&&IEC_CONFIG.SILENCE_END_SEC)||5);
+    const maxSpeech=Math.max(1,Number(IEC_CONFIG&&IEC_CONFIG.MAX_SPEECH_SEC)||20);
+
+    const normRestart=normalizeSpeech(restartWord);
+    const now=()=>performance.now();
+    const reactionRemaining=()=>Math.max(0,reactionDeadlineAt-now());
+    const canRestart=()=>restartCount<maxRestart&&reactionRemaining()>0;
+
+    const countdownSnapshot=()=>{
+      let label='BẮT ĐẦU TRẢ LỜI';
+      let deadline=reactionDeadlineAt;
+
+      if(mode==='AGAIN_WINDOW'){
+        label='NÓI '+String(restartWord||'AGAIN').toUpperCase();
+        deadline=Math.min(
+          Number.isFinite(againWindowDeadlineAt)?againWindowDeadlineAt:reactionDeadlineAt,
+          reactionDeadlineAt
+        );
+      }else if(phaseSpeechStart!==null){
+        label=mode==='REANSWER'?'ĐANG TRẢ LỜI LẠI':'ĐANG TRẢ LỜI';
+        deadline=Number.isFinite(phaseSpeechDeadlineAt)
+          ?phaseSpeechDeadlineAt
+          :(phaseSpeechStart+maxSpeech*1000);
+      }else if(mode==='REANSWER'){
+        label='BẮT ĐẦU TRẢ LỜI LẠI';
+        deadline=Number.isFinite(phaseStartDeadlineAt)?phaseStartDeadlineAt:reactionDeadlineAt;
+      }else{
+        deadline=Number.isFinite(phaseStartDeadlineAt)?phaseStartDeadlineAt:reactionDeadlineAt;
+      }
+
+      const remainingMs=Math.max(0,deadline-now());
+      return {
+        label,
+        remainingSec:remainingMs/1000,
+        mode,
+        restartCount,
+        maxRestart,
+        urgent:remainingMs<=5000
+      };
+    };
+
+    const emitCountdown=()=>{
+      if(locked)return;
+      if(hooks&&hooks.timer)hooks.timer(countdownSnapshot());
+    };
+
+    const startCountdown=()=>{
+      clearInterval(countdownTicker);
+      emitCountdown();
+      countdownTicker=setInterval(emitCountdown,100);
+    };
 
     const emit=(status,heard)=>{
       if(hooks&&hooks.status){
@@ -644,8 +709,9 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
             firstAnswer,
             finalAnswer,
             restartCount,
+            maxRestart,
             elapsed:firstSpeech===null
-              ?(performance.now()-wordStart)/1000
+              ?(now()-wordStart)/1000
               :(firstSpeech-wordStart)/1000
           }
         );
@@ -658,11 +724,20 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
       if(rec===r)rec=null;
     };
 
+    const clearPhaseTimers=()=>{
+      clearTimeout(phaseStartTimer);
+      clearTimeout(maxTimer);
+      phaseStartTimer=null;
+      maxTimer=null;
+    };
+
     const abort=()=>{
       stopRec(rec);
-      clearTimeout(deadline);
-      clearTimeout(maxTimer);
+      clearPhaseTimers();
       clearTimeout(againTimer);
+      againTimer=null;
+      clearInterval(countdownTicker);
+      countdownTicker=null;
     };
 
     const technicalFail=(message)=>{
@@ -673,29 +748,28 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
       reject(new Error(message||'Lỗi kỹ thuật nhận diện giọng nói. Lượt thi chưa bị tính.'));
     };
 
+    const finalPass=()=>{
+      if(!word.english||!officialVoice)return false;
+      const cands=[finalAnswer].concat(alternatives||[]).filter(Boolean);
+      return speechMatches(word.english,cands,profile);
+    };
+
     const finish=(reason)=>{
       if(locked)return;
       locked=true;
       abort();
 
-      if(!finalAnswer&&current){
-        finalAnswer=current;
-        alternatives=alternatives.length?alternatives:[current];
-      }
-
       const reaction=firstSpeech===null?null:(firstSpeech-wordStart)/1000;
-      const cands=[finalAnswer].concat(alternatives||[]).filter(Boolean);
-
       let result='PENDING';
       let fail='';
 
-      if(!voice||reaction===null){
+      if(!officialVoice||reaction===null){
         result='RED';
         fail='NO_VOICE';
       }else if(reaction>reactionLimit){
         result='RED';
         fail='REACTION';
-      }else if(word.english&&speechMatches(word.english,cands,profile)){
+      }else if(finalPass()){
         result='PASS';
       }else if(!word.english){
         result='RECORDED';
@@ -712,15 +786,125 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
         finalAnswer:finalAnswer,
         alternatives:alternatives,
         restartCount:restartCount,
-        voiceDetected:voice,
+        voiceDetected:officialVoice,
         failReason:fail,
         result:result,
         wordStartPerf:wordStart
       });
     };
 
-    const start=(mode)=>{
+    const acceptAgain=()=>{
       if(locked)return;
+
+      // AGAIN chỉ hợp lệ sau một câu trả lời chưa PASS.
+      if(mode!=='AGAIN_WINDOW'||!canRestart()){
+        finish('ANSWER');
+        return;
+      }
+
+      // Chấm thời điểm BẮT ĐẦU nói AGAIN, không chấm thời điểm STT trả transcript.
+      if(phaseSpeechStart===null||phaseSpeechStart>reactionDeadlineAt){
+        finish('ANSWER');
+        return;
+      }
+
+      restartCount++;
+
+      // Kết quả trước bị bỏ; câu trả lời sau AGAIN mới là kết quả đang có hiệu lực.
+      finalAnswer='';
+      alternatives=[];
+      officialVoice=false;
+      current='';
+
+      clearTimeout(againTimer);
+      againTimer=null;
+      clearPhaseTimers();
+      stopRec(rec);
+
+      emit(String(restartWord||'AGAIN').toUpperCase()+' '+restartCount+'/'+maxRestart,'');
+
+      // AGAIN không cấp lại một reaction window 20 giây mới.
+      // Chỉ cho khoảng im lặng cấu hình để bắt đầu câu trả lời lại.
+      setTimeout(()=>startRecognition('REANSWER'),100);
+    };
+
+    const openAgainWindow=()=>{
+      if(locked)return;
+      clearPhaseTimers();
+      stopRec(rec);
+
+      // PASS hoặc hết lượt/hết reaction window => chốt ngay, không chờ SILENCE_END_SEC.
+      if(finalPass()){
+        emit('ĐÚNG · XANH',finalAnswer);
+        finish('PASS');
+        return;
+      }
+      if(!canRestart()){
+        finish('ANSWER');
+        return;
+      }
+
+      mode='AGAIN_WINDOW';
+      phaseSpeechStart=null;
+      current='';
+
+      const windowMs=Math.min(silence*1000,reactionRemaining());
+      if(windowMs<=0){
+        finish('ANSWER');
+        return;
+      }
+
+      againWindowDeadlineAt=now()+windowMs;
+      emit('NÓI '+String(restartWord||'AGAIN').toUpperCase()+' NẾU MUỐN SỬA','');
+
+      clearTimeout(againTimer);
+      againTimer=setTimeout(()=>finish('ANSWER'),windowMs);
+      setTimeout(()=>startRecognition('AGAIN_WINDOW'),80);
+    };
+
+    const commitAnswer=(answer,alts,voiceDetected,answerMode)=>{
+      if(locked)return;
+
+      finalAnswer=String(answer||'').trim();
+      alternatives=Array.isArray(alts)?alts.filter(Boolean).slice():[];
+      officialVoice=!!voiceDetected;
+      current=finalAnswer;
+
+      if(answerMode==='PRIMARY'&&!firstAnswer&&finalAnswer){
+        firstAnswer=finalAnswer;
+      }
+
+      // Đúng chắc chắn = terminal state: BLUE ngay, không mở cửa AGAIN và không chờ timer.
+      if(finalPass()){
+        emit('ĐÚNG · XANH',finalAnswer);
+        finish('PASS');
+        return;
+      }
+
+      // Nếu đã dùng AGAIN cuối cùng (hoặc MAX_RESTART=0), câu hiện tại là kết quả chính thức.
+      if(restartCount>=maxRestart){
+        finish('ANSWER_FINAL');
+        return;
+      }
+
+      openAgainWindow();
+    };
+
+    const startRecognition=(nextMode)=>{
+      if(locked)return;
+
+      mode=nextMode;
+      phaseSpeechStart=null;
+      phaseSpeechDeadlineAt=null;
+      current='';
+
+      // PRIMARY dùng reaction window gốc. REANSWER chỉ có SILENCE_END_SEC để bắt đầu nói,
+      // nên AGAIN không bao giờ tạo thêm một reaction window 20 giây mới.
+      if(mode==='PRIMARY'){
+        phaseStartDeadlineAt=reactionDeadlineAt;
+      }else if(mode==='REANSWER'){
+        phaseStartDeadlineAt=now()+silence*1000;
+      }
 
       let localRec;
       try{
@@ -734,29 +918,67 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
       let finalTop='';
       let alts=[];
 
+      if(mode!=='AGAIN_WINDOW'){
+        clearTimeout(phaseStartTimer);
+        const waitMs=Math.max(0,phaseStartDeadlineAt-now());
+        phaseStartTimer=setTimeout(()=>{
+          if(locked||phaseSpeechStart!==null)return;
+          // Nếu đã nói AGAIN rồi mà không trả lời lại, kết quả sau AGAIN là NO_VOICE/RED.
+          commitAnswer('',[],false,mode);
+        },waitMs);
+      }
+
       localRec.onstart=()=>{
         emit(
           mode==='REANSWER'
             ?'ĐANG NGHE – TRẢ LỜI LẠI'
             :mode==='AGAIN_WINDOW'
-              ?'NÓI AGAIN NẾU MUỐN SỬA'
+              ?'NÓI '+String(restartWord||'AGAIN').toUpperCase()+' NẾU MUỐN SỬA'
               :'ĐANG NGHE',
           ''
         );
       };
 
-      // Xác nhận trình duyệt đã thực sự mở luồng audio từ micro.
       localRec.onaudiostart=()=>{
         emit('MIC ĐANG THU',current);
       };
 
       localRec.onspeechstart=()=>{
-        voice=true;
-        if(firstSpeech===null)firstSpeech=performance.now();
+        phaseSpeechStart=now();
 
-        clearTimeout(deadline);
+        if(mode==='AGAIN_WINDOW'){
+          // Chỉ cần BẮT ĐẦU nói AGAIN đúng hạn; STT có thể trả chữ muộn hơn một chút.
+          if(
+            phaseSpeechStart>reactionDeadlineAt||
+            (againWindowDeadlineAt!==null&&phaseSpeechStart>againWindowDeadlineAt)
+          ){
+            finish('ANSWER');
+            return;
+          }
+          clearTimeout(againTimer);
+          againTimer=null;
+          clearTimeout(maxTimer);
+          maxTimer=setTimeout(()=>finish('ANSWER'),silence*1000);
+          emit('ĐÃ NHẬN LỆNH NÓI LẠI','');
+          return;
+        }
+
+        clearTimeout(phaseStartTimer);
+        phaseStartTimer=null;
+
+        // Với PRIMARY, reaction = lúc bắt đầu câu trả lời đầu tiên.
+        if(mode==='PRIMARY'&&firstSpeech===null){
+          firstSpeech=phaseSpeechStart;
+        }
+
+        // REANSWER không reset firstSpeech/reaction clock.
+        // Đồng hồ nói dùng deadline thực từ performance.now().
+        phaseSpeechDeadlineAt=phaseSpeechStart+maxSpeech*1000;
         clearTimeout(maxTimer);
-        maxTimer=setTimeout(()=>finish('MAX_SPEECH'),maxSpeech*1000);
+        maxTimer=setTimeout(()=>{
+          stopRec(localRec);
+          commitAnswer(current,current?[current]:[],true,mode);
+        },maxSpeech*1000);
 
         emit('ĐÃ NHẬN GIỌNG NÓI',current);
       };
@@ -770,7 +992,6 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
           if(rs.isFinal){
             finalTop=String(rs[0]&&rs[0].transcript||'').trim();
             alts=[];
-
             for(let j=0;j<rs.length;j++){
               const t=String(rs[j]&&rs[j].transcript||'').trim();
               if(t&&!alts.includes(t))alts.push(t);
@@ -785,57 +1006,41 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
 
         if(!finalTop)return;
 
-        const n=String(finalTop).trim().toLowerCase();
-
-        if(n===restartWord){
-          if(
-            restartCount<maxRestart &&
-            (performance.now()-wordStart)<=reactionLimit*1000
-          ){
-            restartCount++;
-            finalAnswer='';
-            alternatives=[];
-            current='';
-            emit('AGAIN '+restartCount+'/'+maxRestart,'');
-
-            clearTimeout(maxTimer);
-            stopRec(localRec);
-            setTimeout(()=>start('REANSWER'),100);
+        if(mode==='AGAIN_WINDOW'){
+          if(normalizeSpeech(finalTop)===normRestart){
+            acceptAgain();
           }else{
-            finish('AGAIN_INVALID');
+            // Cửa AGAIN chỉ nhận đúng lệnh; lời khác nghĩa là giữ kết quả trước.
+            finish('ANSWER');
           }
           return;
         }
 
-        if(mode==='PRIMARY'){
-          firstAnswer=finalTop;
-          finalAnswer=finalTop;
-          alternatives=alts.slice();
-
-          clearTimeout(maxTimer);
+        // Không cho dùng AGAIN thay cho câu trả lời. AGAIN chỉ hợp lệ trong AGAIN_WINDOW.
+        if(normalizeSpeech(finalTop)===normRestart){
+          emit('AGAIN CHỈ DÙNG SAU KHI ĐÃ TRẢ LỜI','');
+          clearPhaseTimers();
           stopRec(localRec);
 
-          setTimeout(()=>start('AGAIN_WINDOW'),100);
-          clearTimeout(againTimer);
-          againTimer=setTimeout(()=>finish('ANSWER'),silence*1000);
-        }else if(mode==='REANSWER'){
-          finalAnswer=finalTop;
-          alternatives=alts.slice();
-          finish('ANSWER');
-        }else if(mode==='AGAIN_WINDOW'){
-          finish('ANSWER');
+          const remaining=Math.max(0,phaseStartDeadlineAt-now());
+          if(remaining<=0){
+            commitAnswer('',[],false,mode);
+          }else{
+            setTimeout(()=>startRecognition(mode),80);
+          }
+          return;
         }
+
+        clearPhaseTimers();
+        stopRec(localRec);
+        commitAnswer(finalTop,alts,true,mode);
       };
 
       localRec.onerror=e=>{
         if(locked)return;
 
         const err=String(e&&e.error||'');
-
-        if(err==='no-speech'){
-          return;
-        }
-
+        if(err==='no-speech')return;
         if(err==='aborted')return;
 
         if(['not-allowed','service-not-allowed','audio-capture','network','language-not-supported'].includes(err)){
@@ -862,19 +1067,36 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
         if(locked)return;
         if(rec===localRec)rec=null;
 
-        if(mode==='PRIMARY'&&firstSpeech===null){
-          if(((performance.now()-wordStart)/1000)<reactionLimit){
-            setTimeout(()=>start('PRIMARY'),80);
-          }else{
-            finish('REACTION');
+        if(mode==='AGAIN_WINDOW'){
+          // onend của Chrome/Safari không được tự rút ngắn cửa AGAIN.
+          if(normalizeSpeech(current)===normRestart&&phaseSpeechStart!==null){
+            acceptAgain();
+            return;
           }
-        }else if(mode==='AGAIN_WINDOW'||mode==='REANSWER'){
-          finish('ANSWER');
+          if(now()<againWindowDeadlineAt&&canRestart()){
+            setTimeout(()=>startRecognition('AGAIN_WINDOW'),80);
+          }else{
+            finish('ANSWER');
+          }
+          return;
         }
+
+        if(phaseSpeechStart===null){
+          if(now()<phaseStartDeadlineAt){
+            // Browser kết thúc recognition sớm: mở lại cho tới đúng deadline của phase.
+            setTimeout(()=>startRecognition(mode),80);
+          }else{
+            commitAnswer('',[],false,mode);
+          }
+          return;
+        }
+
+        // Có tiếng nói nhưng STT chưa trả final text: vẫn là một câu trả lời có voice.
+        clearPhaseTimers();
+        commitAnswer(current,current?[current]:[],true,mode);
       };
 
       try{
-        // Dừng TTS trước khi mở STT để tránh xung đột audio session trên mobile.
         stopTts();
         localRec.start();
       }catch(e){
@@ -882,8 +1104,8 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
       }
     };
 
-    deadline=setTimeout(()=>finish('REACTION'),reactionLimit*1000);
-    start('PRIMARY');
+    startCountdown();
+    startRecognition('PRIMARY');
   });
 }
 
