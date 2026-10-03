@@ -396,23 +396,13 @@ function speechSimilarity(a,b){
   return Math.max(0,1-(speechEditDistance(a,b)/maxLen));
 }
 
-function speechAssistLevel(profile){
-  return Math.max(0,Math.min(10,Number(profile&&profile.boost)||0));
+function speechThresholdPercent(profile){
+  const n=Number(profile&&profile.matchPercent);
+  return Number.isFinite(n)?Math.max(0,Math.min(100,n)):80;
 }
 
-function speechThreshold(profile,target){
-  const assist=speechAssistLevel(profile);
-
-  // Dùng chính STT_*_BOOST trong CONFIG làm mức hỗ trợ IEC khi browser-context tạm tắt.
-  // boost càng cao -> máy càng khoan dung hơn. Không cần sửa code khi muốn chỉnh độ khó.
-  let threshold=.93-(assist*.015);
-
-  const len=normalizeSpeech(target).replace(/\s+/g,'').length;
-  if(len<=4)threshold=Math.max(threshold,.96);
-  else if(len<=7)threshold=Math.max(threshold,.91);
-  else if(len<=11)threshold=Math.max(threshold,.87);
-
-  return Math.max(.75,Math.min(.97,threshold));
+function speechThreshold(profile){
+  return speechThresholdPercent(profile)/100;
 }
 
 function speechMatchDetail(expected,cands,profile){
@@ -432,7 +422,9 @@ function speechMatchDetail(expected,cands,profile){
           pass:true,
           exact:true,
           score:1,
-          threshold:1,
+          scorePercent:100,
+          threshold:speechThreshold(profile),
+          thresholdPercent:speechThresholdPercent(profile),
           candidate:cand,
           target:target
         };
@@ -447,13 +439,17 @@ function speechMatchDetail(expected,cands,profile){
     }
   }
 
-  const threshold=speechThreshold(profile,bestTarget||expected);
+  const thresholdPercent=speechThresholdPercent(profile);
+  const scorePercent=Math.round(best*1000)/10;
+  const threshold=thresholdPercent/100;
 
   return {
-    pass:best>=threshold,
+    pass:scorePercent>=thresholdPercent,
     exact:false,
     score:best,
+    scorePercent:scorePercent,
     threshold:threshold,
+    thresholdPercent:thresholdPercent,
     candidate:bestCandidate,
     target:bestTarget||normalizeSpeech(expected)
   };
@@ -464,7 +460,7 @@ function speechMatches(expected,cands,profile){
 }
 
 function iosSpeechHelpMessage(){
-  return 'Trên iPhone/iPad, phần THI NÓI phải mở bằng ứng dụng Safari thật (không mở trong cửa sổ bên trong Gmail/ChatGPT/Facebook/Zalo hoặc app khác). Hãy bấm dấu … ở góc trên → Mở trong Safari. Nếu Safari vẫn báo lỗi, vào Cài đặt → Cài đặt chung → Bàn phím → bật Bật đọc chính tả (Enable Dictation), rồi mở lại bài thi.';
+  return 'Trên iPhone/iPad, phần THI NÓI phải mở bằng Google Chrome. Hãy bật micrô: Cài đặt → Ứng dụng → Chrome → Micrô → Bật, rồi mở lại bài thi bằng Chrome.';
 }
 
 function buildRecognition(profile){
@@ -490,7 +486,7 @@ function buildRecognition(profile){
 
   r.maxAlternatives=Math.max(
     1,
-    Math.min(5,Number(profile&&profile.alternatives)||1)
+    Math.min(5,Math.floor(Number(profile&&profile.alternatives)||1))
   );
 
   // Tạm thời không dùng SpeechRecognitionPhrase/r.phrases:
@@ -638,7 +634,12 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
     let countdownTicker=null;
     let phaseSpeechDeadlineAt=null;
 
-    const reactionLimit=Math.max(1,Number(IEC_CONFIG&&IEC_CONFIG.REACTION_LIMIT_SEC)||20);
+    const reactionLimit=Math.max(
+      1,
+      Number(profile&&profile.reactionLimitSec)||
+      Number(IEC_CONFIG&&IEC_CONFIG.REACTION_LIMIT_SEC)||
+      20
+    );
     const reactionDeadlineAt=wordStart+reactionLimit*1000;
     const restartWord=String((IEC_CONFIG&&IEC_CONFIG.RESTART_WORD)||'AGAIN').trim();
 
