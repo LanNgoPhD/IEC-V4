@@ -1,4 +1,4 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>IEC V4 – Luyện tập</title><link rel="stylesheet" href="styles.css?v=4.0.1"><script src="config.js?v=20261003.1"></script><script src="common.js?v=20261003.1"></script></head><body><div class="wrap">
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>IEC V4 – Luyện tập</title><link rel="stylesheet" href="styles.css?v=4.0.1"><script src="config.js?v=20261003.1"></script><script src="common.js?v=20261003.3"></script></head><body><div class="wrap">
 <div class="card"><h1>LUYỆN TẬP – SỬA VIẾT & LUYỆN NÓI</h1><div class="sub">ĐỎ phải đạt viết trước → VÀNG → luyện/thi nói → XANH</div><div id="meta" class="statusbar"></div><div class="row"><button id="greenBtn" class="secondary">XEM KẾT QUẢ XANH LÁ</button></div></div>
 <div id="greenCard" class="card hidden"><h2>Kết quả trợ giảng xem xét</h2><table><thead><tr><th>Từ</th><th>Kết quả</th><th>Lỗi</th><th>Nhận xét</th></tr></thead><tbody id="greenRows"></tbody></table><div id="greenEmpty" class="muted"></div></div>
 <div id="redCard" class="card hidden"><div class="row" style="justify-content:space-between"><div><h2>1. ĐỎ – sửa viết</h2><div class="muted">Luyện không giới hạn. Khi viết đúng, từ chuyển ngay sang VÀNG trong cùng phiên luyện tập.</div></div><div class="row tts-settings"><label>Giọng đọc</label><select id="voicePreset" aria-label="Giọng đọc"><option>Nam – Mỹ</option><option>Nữ – Anh</option></select><label>Tốc độ</label><select id="rate" aria-label="Tốc độ đọc"></select></div></div><div id="redStudy"></div><button id="writeBtn">KIỂM TRA VIẾT ĐỎ</button></div>
@@ -14,6 +14,10 @@ const voicePresetSelect=document.getElementById('voicePreset');
 function selectedTtsRate(){
   const v=Number(rateSelect&&rateSelect.value);
   return Number.isFinite(v)&&v>0?v:Number(IEC_CONFIG&&IEC_CONFIG.TTS_DEFAULT_RATE||.85);
+}
+function configuredMaxRestart(){
+  const v=Number(IEC_CONFIG&&IEC_CONFIG.MAX_RESTART);
+  return Number.isFinite(v)?Math.max(0,Math.floor(v)):1;
 }
 document.addEventListener('DOMContentLoaded',async()=>{window.addEventListener('message',handleMessage);greenBtn.onclick=toggleGreen;writeBtn.onclick=startWrite;writeSubmit.onclick=submitWrite;speakTestBtn.onclick=startSpeakTest;try{CTX=requireContext();await loadClientConfig();setupRates();setupTtsPresetSelect(voicePresetSelect);await loadData()}catch(e){meta.textContent=String(e.message||e)}});
 function setupRates(){
@@ -146,7 +150,7 @@ async function startSpeakTest(){
           speakHeard.textContent='---';
           speakTimer.textContent='';
           speakAgain.textContent='Có thể nói '+String(IEC_CONFIG.RESTART_WORD||'AGAIN')
-            +' tối đa '+Number(IEC_CONFIG.MAX_RESTART||1)+' lần trong cửa phản xạ';
+            +' tối đa '+configuredMaxRestart()+' lần trong cửa phản xạ';
           speakResult.className='speech-result';
           speakResult.textContent='';
         },
@@ -154,11 +158,17 @@ async function startSpeakTest(){
         status:(st,h,info)=>{
           speakStatus.textContent=st;
           speakHeard.textContent=h||'---';
-          speakTimer.textContent=Number(info.elapsed||0).toFixed(2)+' s';
           speakAgain.textContent='AGAIN '+Number(info.restartCount||0)
-            +' / '+Number(IEC_CONFIG.MAX_RESTART||1);
+            +' / '+configuredMaxRestart();
           speakResult.className='speech-result listening';
           speakResult.textContent='🎤 '+st+(h?' · '+h:'');
+        },
+
+        timer:(t)=>{
+          const sec=Math.max(0,Number(t&&t.remainingSec)||0);
+          speakTimer.textContent='⏱ '+String(t&&t.label||'THỜI GIAN')
+            +' · '+sec.toFixed(1)+' s';
+          speakTimer.style.color=(t&&t.urgent)?'#b42318':'';
         },
 
         afterWord:(r)=>{
@@ -170,6 +180,8 @@ async function startSpeakTest(){
             speakResult.textContent='VÀNG · THI NÓI LẠI';
           }
           speakStatus.textContent='ĐÃ GHI NHẬN';
+          speakTimer.textContent='✓ ĐÃ CHỐT';
+          speakTimer.style.color='';
         }
       }
     );
