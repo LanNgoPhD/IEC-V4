@@ -512,10 +512,14 @@ function oneShotSpeech(expected,profile,phrases,onStatus){
       if(settled)return;
       settled=true;
       const c=[finalTop].concat(alts).filter(Boolean);
+      const match=speechMatchDetail(expected,c,profile);
       resolve({
-        heard:finalTop||heard,
+        heard:match.candidate||finalTop||heard,
+        rawHeard:finalTop||heard,
         alternatives:alts,
-        pass:speechMatches(expected,c,profile)
+        matchScorePercent:match.scorePercent,
+        matchThresholdPercent:match.thresholdPercent,
+        pass:match.pass
       });
     };
 
@@ -749,10 +753,20 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
       reject(new Error(message||'Lỗi kỹ thuật nhận diện giọng nói. Lượt thi chưa bị tính.'));
     };
 
-    const finalPass=()=>{
-      if(!word.english||!officialVoice)return false;
+    const finalMatchDetail=()=>{
+      if(!word.english||!officialVoice)return null;
       const cands=[finalAnswer].concat(alternatives||[]).filter(Boolean);
-      return speechMatches(word.english,cands,profile);
+      return speechMatchDetail(word.english,cands,profile);
+    };
+
+    const finalPass=()=>{
+      const match=finalMatchDetail();
+      return !!(match&&match.pass);
+    };
+
+    const bestFinalHeard=()=>{
+      const match=finalMatchDetail();
+      return String((match&&match.candidate)||finalAnswer||current||'').trim();
     };
 
     const finish=(reason)=>{
@@ -836,7 +850,7 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
 
       // PASS hoặc hết lượt/hết reaction window => chốt ngay, không chờ SILENCE_END_SEC.
       if(finalPass()){
-        emit('ĐÚNG · XANH',finalAnswer);
+        emit('ĐÚNG · XANH',bestFinalHeard());
         finish('PASS');
         return;
       }
@@ -877,7 +891,7 @@ function runOfficialSpeechWord(word,profile,phrases,hooks){
 
       // Đúng chắc chắn = terminal state: BLUE ngay, không mở cửa AGAIN và không chờ timer.
       if(finalPass()){
-        emit('ĐÚNG · XANH',finalAnswer);
+        emit('ĐÚNG · XANH',bestFinalHeard());
         finish('PASS');
         return;
       }
