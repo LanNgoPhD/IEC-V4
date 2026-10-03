@@ -258,12 +258,11 @@ async function ttsSpeak(text,rate=1,repeat=1){
 
   let left=Math.max(1,Number(repeat)||1);
   const requestedRate=Number(rate)||1;
-  // iOS ổn định hơn ở tốc độ vừa phải; các nền tảng khác giữ nguyên hành vi cũ.
-  const safeRate=ttsIsIOS()
-    ? Math.max(.72,Math.min(.90,requestedRate*.88))
-    : ttsIsAndroid()
-      ? Math.max(.78,Math.min(1.0,requestedRate*.94))
-      : Math.max(.5,Math.min(1.2,requestedRate));
+
+  // Tốc độ phải phản ánh đúng lựa chọn của người dùng trên mọi thiết bị.
+  // Trước đây iPhone/Android bị ép vào dải quá hẹp (.72-.90 / .78-1.0),
+  // nên nhiều mức tốc độ khác nhau thực tế phát gần như giống nhau.
+  const safeRate=Math.max(.5,Math.min(1.2,requestedRate));
   const actualLang=String(voice&&voice.lang||targetLang).replace('_','-')||targetLang;
   const startDelay=ttsIsIOS()?260:(ttsIsAndroid()?220:140);
   const repeatDelay=ttsIsIOS()?420:(ttsIsAndroid()?380:320);
