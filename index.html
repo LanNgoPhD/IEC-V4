@@ -1,1 +1,46 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IEC V4</title><link rel="stylesheet" href="styles.css?v=4.0.1"></head><body><div class="wrap"><div class="card"><h1>IEC V4</h1><div class="sub">Hệ thống học tăng cường: VIẾT trước → NÓI sau.</div><div class="stateLegend" style="margin-top:14px"><span class="stateRed">ĐỎ – chưa đạt viết</span><span class="stateYellow">VÀNG – đạt viết, chờ đạt nói</span><span class="stateBlue">XANH – đạt viết + nói</span><span class="stateGreen">XANH LÁ – cần xem xét</span></div><div class="msg" style="margin-top:16px">Hãy mở đúng liên kết cá nhân được gửi trong email hoặc do giáo viên cung cấp.</div></div></div></body></html>
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>IEC V4.1</title><link rel="stylesheet" href="styles.css?v=4.1.0"><script src="config.js?v=20261004.1"></script><script src="common.js?v=20261004.1"></script></head>
+<body><div class="portal-shell">
+<header class="portal-header"><div><h1>IEC V4.1</h1><div id="portalMeta" class="sub">Đang tải...</div></div><div class="stateLegend"><span class="stateRed">ĐỎ – sửa viết</span><span class="stateYellow">VÀNG – luyện nói</span><span class="stateBlue">XANH – đạt</span><span class="stateGreen">XANH LÁ – TA xem xét</span></div></header>
+<nav id="nav" class="portal-tabs"></nav>
+<main>
+<section id="infoView" class="portal-view"><div class="card"><h2>THÔNG TIN</h2><div id="infoBody" class="msg">Đang tải thông tin...</div></div></section>
+<section id="examView" class="portal-view hidden"><div class="card"><h2>CA THI</h2><div class="sub">Ba ca chính thức trong ngày. Số lượt được kiểm soát bởi CẤU_HÌNH_VẬN_HÀNH.</div><div class="exam-grid">
+<button onclick="showFrame('morning.html','exam')"><b>CA SÁNG</b><span>Kiểm tra VIẾT</span></button>
+<button onclick="showFrame('drill.html?examOnly=1','exam')"><b>CA GIỮA NGÀY</b><span>Sửa ĐỎ → VÀNG; thi nói VÀNG → XANH</span></button>
+<button onclick="showFrame('final.html','exam')"><b>CA CUỐI NGÀY</b><span>Thi nói VÀNG; GREEN/PENDING theo luật TA</span></button>
+</div></div></section>
+<section id="frameView" class="portal-view hidden"><iframe id="portalFrame" class="portal-frame" title="IEC"></iframe></section>
+<section id="resultView" class="portal-view hidden"><div class="card"><h2>KẾT QUẢ</h2><div id="resultBody" class="msg">Đang tải...</div></div></section>
+</main></div>
+<script>
+const ROLE=(qp('role')||'student').toLowerCase(),VIEW=(qp('view')||'info').toLowerCase();let CTX=null;
+function copyParams(url){const u=new URL(url,location.href);new URLSearchParams(location.search).forEach(function(v,k){if(!['view','exam','role','embed'].includes(k))u.searchParams.set(k,v)});u.searchParams.set('embed','1');return u.toString()}
+function addTab(id,label,fn){const b=document.createElement('button');b.textContent=label;b.dataset.id=id;b.onclick=fn;nav.appendChild(b);return b}
+function showView(id){document.querySelectorAll('.portal-view').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id===id.replace('View','')))}
+function showFrame(page,tab){showView('frameView');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id===tab));portalFrame.src=copyParams(page)}
+function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+async function loadStudentInfo(){
+ const d=await jsonp(API_BASE+'?api=student-info&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&run='+encodeURIComponent(CTX.runId)+'&token='+encodeURIComponent(CTX.token));if(!d||d.ok===false)throw new Error(d&&d.error||'Không tải được thông tin');
+ portalMeta.textContent=(d.student.fullName||d.student.studentId)+' · Ngày '+d.run.programDay+' · IEC '+d.version;
+ infoBody.className='';infoBody.innerHTML='<div class="kpis"><div class="kpi"><span>ĐỎ</span><b>'+d.counts.RED+'</b></div><div class="kpi yellowKpi"><span>VÀNG</span><b>'+d.counts.YELLOW+'</b></div><div class="kpi"><span>XANH LÁ</span><b>'+d.counts.GREEN+'</b></div><div class="kpi"><span>XANH</span><b>'+d.counts.BLUE+'</b></div></div>'+
+ '<div class="info-grid portal-info"><b>CA SÁNG</b><span>'+esc(viState(d.morning.status))+' · '+d.morning.maxAttempts+' lượt chính thức</span><b>CA GIỮA NGÀY</b><span>Đã dùng '+d.drillSpeak.used+'/'+d.drillSpeak.max+' lượt thi nói</span><b>CA CUỐI NGÀY</b><span>'+esc(viState(d.final.status))+' · '+d.final.maxAttempts+' lượt chính thức</span><b>TA đang xem xét</b><span>'+d.reviewWaiting+' XANH LÁ</span></div>';
+}
+async function loadResults(){
+ showView('resultView');resultBody.textContent='Đang tải...';const d=await jsonp(API_BASE+'?api=student-results&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&token='+encodeURIComponent(CTX.token));if(!d||d.ok===false)throw new Error(d&&d.error||'Không tải được kết quả');
+ let h='<h3>Lịch sử ngày học</h3><div class="table-scroll"><table><thead><tr><th>Ngày</th><th>Sáng</th><th>Giữa ngày</th><th>Cuối ngày</th><th>ĐỎ</th><th>VÀNG</th><th>XANH LÁ</th><th>XANH</th></tr></thead><tbody>';
+ (d.days||[]).forEach(x=>{h+='<tr><td>'+x.programDay+'</td><td>'+esc(viState(x.morningStatus))+'</td><td>'+esc(viState(x.drillStatus))+'</td><td>'+esc(viState(x.finalStatus))+'</td><td>'+x.red+'</td><td>'+x.yellow+'</td><td>'+x.green+'</td><td>'+x.blue+'</td></tr>'});h+='</tbody></table></div><h3>TA xem xét XANH LÁ</h3>';
+ if(!(d.reviews||[]).length)h+='<div class="msg">Chưa có trường hợp XANH LÁ.</div>';else{h+='<div class="table-scroll"><table><thead><tr><th>Ngày</th><th>Từ</th><th>Trạng thái</th><th>Nhận xét TA</th></tr></thead><tbody>';d.reviews.forEach(x=>{h+='<tr><td>'+x.programDay+'</td><td>'+esc(x.word)+'</td><td>'+esc(x.reviewStatus==='DONE'?viState(x.result):'CHỜ TA')+'</td><td>'+esc(x.comment||'—')+'</td></tr>'});h+='</tbody></table></div>'}resultBody.className='';resultBody.innerHTML=h;
+}
+function setupStudent(){
+ CTX=requireContext();addTab('info','THÔNG TIN',()=>{showView('infoView');loadStudentInfo().catch(showErr)});addTab('frame','LUYỆN TẬP',()=>showFrame('drill.html','frame'));
+ addTab('exam','CA THI',()=>{showView('examView');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='exam'))});
+ addTab('result','KẾT QUẢ',()=>loadResults().catch(showErr));
+ const v=VIEW;if(v==='practice')showFrame('drill.html','frame');else if(v==='exam'){const which=(qp('exam')||'').toLowerCase();if(which==='final')showFrame('final.html','exam');else if(which==='morning')showFrame('morning.html','exam');else if(which==='drill')showFrame('drill.html?examOnly=1','exam');else{showView('examView');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='exam'))}}else if(v==='result')loadResults().catch(showErr);else{showView('infoView');loadStudentInfo().catch(showErr)}
+}
+function setupTa(){portalMeta.textContent='Cổng TRỢ GIẢNG';addTab('info','THÔNG TIN',()=>{showView('infoView');infoBody.textContent='XANH LÁ/PENDING: TA đánh giá ĐẠT → XANH; CHƯA ĐẠT → VÀNG.'});addTab('manage','QUẢN LÝ',()=>showFrame('ta-review.html','manage'));if(VIEW==='manage')showFrame('ta-review.html','manage');else document.querySelector('#nav button').click()}
+function setupDashboard(){portalMeta.textContent='QUẢN LÝ IEC';addTab('manage','QUẢN LÝ',()=>showFrame('dashboard.html','manage'));showFrame('dashboard.html','manage')}
+function showErr(e){infoBody.className='msg err';infoBody.textContent='LỖI: '+String(e.message||e)}
+document.addEventListener('DOMContentLoaded',async()=>{try{await loadClientConfig();if(ROLE==='ta')setupTa();else if(ROLE==='dashboard'||ROLE==='admin')setupDashboard();else setupStudent()}catch(e){portalMeta.textContent='LỖI';showErr(e)}})
+</script></body></html>
