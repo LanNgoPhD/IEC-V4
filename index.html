@@ -6,7 +6,7 @@
 <nav id="nav" class="portal-tabs"></nav>
 <main>
 <section id="infoView" class="portal-view"><div class="card"><h2>THÔNG TIN</h2><div id="infoBody" class="msg">Đang tải thông tin...</div></div></section>
-<section id="examView" class="portal-view hidden"><div class="card"><h2>CA THI</h2><div class="sub">Ba ca chính thức trong ngày. Số lượt được kiểm soát bởi CẤU_HÌNH_VẬN_HÀNH.</div><div class="exam-grid">
+<section id="examView" class="portal-view hidden"><div class="card"><h2>CA THI</h2><div id="examAttempts" class="sub">Đang tải số lượt thi...</div><div class="exam-grid">
 <button onclick="showFrame('morning.html','exam')"><b>CA SÁNG</b><span>Kiểm tra VIẾT</span></button>
 <button onclick="showFrame('drill.html?examOnly=1','exam')"><b>CA GIỮA NGÀY</b><span>Sửa ĐỎ → VÀNG; thi nói VÀNG → XANH</span></button>
 <button onclick="showFrame('final.html','exam')"><b>CA CUỐI NGÀY</b><span>Thi nói VÀNG; GREEN/PENDING theo luật TA</span></button>
@@ -31,7 +31,7 @@ function showFrame(page,tab){
 function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 async function loadStudentInfo(){
  const d=await jsonp(API_BASE+'?api=student-info&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&run='+encodeURIComponent(CTX.runId)+'&token='+encodeURIComponent(CTX.token));if(!d||d.ok===false)throw new Error(d&&d.error||'Không tải được thông tin');
- portalMeta.textContent=(d.student.fullName||d.student.studentId)+' · Ngày '+d.run.programDay+' · IEC '+d.version;
+ document.getElementById('examAttempts').textContent=   'Hàng ngày: Ca sáng '+d.morning.maxAttempts+   ' lượt · Ca giữa ngày '+d.drillSpeak.max+   ' lượt · Ca cuối ngày '+d.final.maxAttempts+' lượt.';
  infoBody.className='';infoBody.innerHTML='<div class="kpis"><div class="kpi"><span>ĐỎ</span><b>'+d.counts.RED+'</b></div><div class="kpi yellowKpi"><span>VÀNG</span><b>'+d.counts.YELLOW+'</b></div><div class="kpi"><span>XANH LÁ</span><b>'+d.counts.GREEN+'</b></div><div class="kpi"><span>XANH</span><b>'+d.counts.BLUE+'</b></div></div>'+
  '<div class="info-grid portal-info"><b>CA SÁNG</b><span>'+esc(viState(d.morning.status))+' · '+d.morning.maxAttempts+' lượt chính thức</span><b>CA GIỮA NGÀY</b><span>Đã dùng '+d.drillSpeak.used+'/'+d.drillSpeak.max+' lượt thi nói</span><b>CA CUỐI NGÀY</b><span>'+esc(viState(d.final.status))+' · '+d.final.maxAttempts+' lượt chính thức</span><b>TA đang xem xét</b><span>'+d.reviewWaiting+' XANH LÁ</span></div>';
 }
