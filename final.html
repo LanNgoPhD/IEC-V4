@@ -60,7 +60,7 @@ async function ensureIosSpeakReady(){
 }
 document.addEventListener('DOMContentLoaded',async()=>{   window.addEventListener('message',handleBackend);   startBtn.onclick=startFinal;   clipBtn.onclick=submitClip;   try{     CTX=requireContext();     await loadClientConfig();     meta.textContent='Sẵn sàng';     restoreClipState();   }catch(e){     setMsg(topMsg,String(e.message||e),'err');     startBtn.disabled=true;   } });
 async function startFinal(){startBtn.disabled=true;setMsg(topMsg,'Đang tải danh sách VÀNG...');try{DATA=await jsonp(API_BASE+'?api=final-data&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&run='+encodeURIComponent(CTX.runId)+'&token='+encodeURIComponent(CTX.token));if(!DATA||DATA.ok===false)throw new Error(DATA&&DATA.error||'Không tải được bài thi nói cuối');document.getElementById('finalRule').textContent=
-  'Chỉ kiểm tra các từ VÀNG còn lại · Tối đa '+
+  ' còn lại · Tối đa '+
   Number(DATA.attempts&&DATA.attempts.max||1)+
   ' lần thi mỗi ngày';if(DATA.submitted){
   meta.textContent='NGÀY '+DATA.run.programDay+   ' · Đã dùng '+Number(DATA.attempts&&DATA.attempts.used||0)+   '/'+Number(DATA.attempts&&DATA.attempts.max||1)+' lần thi';
