@@ -19,7 +19,15 @@ const ROLE=(qp('role')||'student').toLowerCase(),VIEW=(qp('view')||'info').toLow
 function copyParams(url){const u=new URL(url,location.href);new URLSearchParams(location.search).forEach(function(v,k){if(!['view','exam','role','embed'].includes(k))u.searchParams.set(k,v)});u.searchParams.set('embed','1');return u.toString()}
 function addTab(id,label,fn){const b=document.createElement('button');b.textContent=label;b.dataset.id=id;b.onclick=fn;nav.appendChild(b);return b}
 function showView(id){document.querySelectorAll('.portal-view').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id===id.replace('View','')))}
-function showFrame(page,tab){showView('frameView');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id===tab));portalFrame.src=copyParams(page)}
+function showFrame(page,tab){
+  showView('frameView');
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id===tab));
+
+  const u=new URL(copyParams(page));
+  u.searchParams.set('_v',Date.now());
+
+  portalFrame.src=u.toString();
+}
 function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 async function loadStudentInfo(){
  const d=await jsonp(API_BASE+'?api=student-info&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&run='+encodeURIComponent(CTX.runId)+'&token='+encodeURIComponent(CTX.token));if(!d||d.ok===false)throw new Error(d&&d.error||'Không tải được thông tin');
