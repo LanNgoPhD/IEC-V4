@@ -86,6 +86,7 @@
         <button id="wordFirst" class="secondary" title="Về đầu">⏮ ĐẦU</button>
         <button id="wordPrev" class="secondary" title="Lùi một mục">◀ LÙI</button>
         <button id="wordPlay">▶ PHÁT</button>
+        <button id="wordRepeat" class="secondary">🔊 NGHE [N] LẦN</button>
         <button id="wordStop" class="secondary">⏸ DỪNG</button>
         <button id="wordNext" class="secondary" title="Sang mục tiếp theo">▶ TIẾP</button>
         <button id="wordLast" class="secondary" title="Tới cuối">CUỐI ⏭</button>
@@ -115,6 +116,7 @@
         <button id="chainFirst" class="secondary" title="Về đầu">⏮ ĐẦU</button>
         <button id="chainPrev" class="secondary" title="Lùi một mục">◀ LÙI</button>
         <button id="chainPlay">▶ PHÁT</button>
+        <button id="chainRepeat" class="secondary">🔊 NGHE [N] LẦN</button>
         <button id="chainStop" class="secondary">⏸ DỪNG</button>
         <button id="chainNext" class="secondary" title="Sang mục tiếp theo">▶ TIẾP</button>
         <button id="chainLast" class="secondary" title="Tới cuối">CUỐI ⏭</button>
@@ -282,6 +284,11 @@ function configuredDictationReplay(){
   const v=Number(IEC_CONFIG&&IEC_CONFIG.DICTATION_REPLAY_MAX);
   return Number.isFinite(v)?Math.max(0,Math.min(10,Math.floor(v))):3;
 }
+
+function configuredTtsRepeat(){
+  const v=Math.floor(Number(IEC_CONFIG&&IEC_CONFIG.TTS_REPEAT));
+  return Number.isFinite(v)&&v>0?Math.min(20,v):1;
+}
 function updateDictationReplayUi(){
   const n=Math.max(0,Number(dictationReplayRemaining||0));
   dictationReplayInfo.textContent='Còn '+n+' lần nghe lại';
@@ -395,6 +402,7 @@ function renderWordPanel(){
   wordPrev.disabled=wordFirst.disabled=wordIndex<=0;
   wordNext.disabled=wordLast.disabled=wordIndex>=items.length-1;
   wordSpeak.disabled=false;
+  wordRepeat.textContent='🔊 NGHE '+configuredTtsRepeat()+' LẦN';
 }
 function moveWord(where){
   const items=allPracticeItems();
@@ -407,6 +415,22 @@ function moveWord(where){
   wordSpeakResult.textContent='';
   renderWordPanel();
 }
+async function repeatCurrentWord(){
+  const it=allPracticeItems()[wordIndex];
+  if(!it)return;
+  stopPracticeAudio();
+  const n=configuredTtsRepeat();
+  wordRepeat.disabled=true;
+  try{
+    for(let i=0;i<n;i++){
+      await ttsSpeak(it.english,selectedTtsRate(),1);
+      if(i<n-1)await new Promise(r=>setTimeout(r,250));
+    }
+  }finally{
+    wordRepeat.disabled=false;
+  }
+}
+
 async function speakPracticeItem(it,out){
   if(!it||!out)return;
   out.textContent='Đang nghe...';
@@ -454,6 +478,7 @@ function renderChainPanel(){
   chainFirst.disabled=chainPrev.disabled=chainIndex<=0;
   chainNext.disabled=chainLast.disabled=chainIndex>=chainItems.length-1;
   chainSpeak.disabled=false;
+  chainRepeat.textContent='🔊 NGHE '+configuredTtsRepeat()+' LẦN';
 }
 function moveChain(where){
   if(!chainItems.length)return;
@@ -499,6 +524,43 @@ async function playChainFromCurrent(){
     }
   }
 }
+async function repeatLockedChain(){
+  ensureChainGroup(false);
+  if(!chainItems.length||chainPlaying)return;
+  chainPlaying=true;
+  const token=++chainRunToken;
+  const n=configuredTtsRepeat();
+  const gap=configuredChainGap();
+  const savedIndex=chainIndex;
+  chainRepeat.disabled=true;
+  chainPlay.disabled=true;
+  try{
+    for(let round=0;round<n&&token===chainRunToken;round++){
+      for(let i=0;i<chainItems.length&&token===chainRunToken;i++){
+        chainIndex=i;
+        renderChainPanel();
+        setMsg(chainMsg,'Đang nghe lần '+(round+1)+'/'+n+' · mục '+(i+1)+'/'+chainItems.length+'...');
+        await ttsSpeak(chainItems[i].english,selectedTtsRate(),1);
+        if(token!==chainRunToken)break;
+        if(gap>0 && !(round===n-1 && i===chainItems.length-1))
+          await new Promise(r=>setTimeout(r,gap*1000));
+      }
+    }
+    if(token===chainRunToken){
+      chainCompleted=true;
+      setMsg(chainMsg,'Đã nghe đủ '+n+' lần · cụm vẫn được giữ nguyên.','ok');
+    }
+  }finally{
+    if(token===chainRunToken){
+      chainPlaying=false;
+      chainRepeat.disabled=false;
+      chainPlay.disabled=false;
+      chainIndex=Math.min(savedIndex,Math.max(0,chainItems.length-1));
+      renderChainPanel();
+    }
+  }
+}
+
 function stopChain(){
   if(!chainItems.length)return;
   chainRunToken++;
@@ -602,7 +664,8 @@ function bindPracticeTools(){
   wordNext.onclick=()=>moveWord('next');
   wordLast.onclick=()=>moveWord('last');
   wordPlay.onclick=function(){const it=allPracticeItems()[wordIndex];if(it)ttsSpeak(it.english,selectedTtsRate(),1);};
-  wordStop.onclick=function(){stopTts();};
+  wordRepeat.onclick=repeatCurrentWord;
+  wordStop.onclick=function(){stopPracticeAudio();wordRepeat.disabled=false;};
   wordSpeak.onclick=function(){speakPracticeItem(allPracticeItems()[wordIndex],wordSpeakResult);};
 
   chainFirst.onclick=()=>moveChain('first');
@@ -610,6 +673,7 @@ function bindPracticeTools(){
   chainNext.onclick=()=>moveChain('next');
   chainLast.onclick=()=>moveChain('last');
   chainPlay.onclick=playChainFromCurrent;
+  chainRepeat.onclick=repeatLockedChain;
   chainStop.onclick=stopChain;
   chainNew.onclick=newChain;
   chainSpeak.onclick=function(){speakPracticeItem(chainItems[chainIndex],chainSpeakResult);};
