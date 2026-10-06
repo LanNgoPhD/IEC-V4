@@ -344,7 +344,28 @@ function renderResults(d){
 function buildStudentNav(){
   CTX=requireContext();portalMeta.textContent=CTX.studentId+' · IEC V4.1';
   addTab('info','THÔNG TIN',function(){showView('infoView');loadStudentInfo(true).catch(showErr);});
-  addTab('frame','LUYỆN TẬP',()=>showFrame('drill.html','frame'));
+ const practiceTab=addTab('frame','LUYỆN TẬP',async function(){
+  try{
+    const d=await loadStudentInfo(true);
+
+    const finalStatus=String(d.final&&d.final.status||'').toUpperCase();
+    const finalUsed=Number(d.final&&d.final.used||0);
+    const finalOpened=
+      finalUsed>0 ||
+      ['STARTED','AWAIT_CLIP','COMPLETED','CLIP_MISSING','DONE'].includes(finalStatus);
+
+    if(finalOpened){
+      practiceTab.disabled=true;
+      practiceTab.style.opacity='0.48';
+      practiceTab.style.cursor='not-allowed';
+      return;
+    }
+
+    showFrame('drill.html','frame');
+  }catch(e){
+    showErr(e);
+  }
+});
   addTab('exam','CA THI',()=>openExamOverview());
   addTab('result','KẾT QUẢ',()=>loadResults().catch(showErr));
 }
