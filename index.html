@@ -277,7 +277,6 @@ function renderExamOverview(d){
   }
 
 }
-}
 async function openExamOverview(){
   showView('examView');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='exam'));
   try{await Promise.all([window.IEC_V4_ENSURE_CONFIG(),loadStudentInfo(true)]);}catch(e){examAttempts.textContent='LỖI: '+String(e.message||e);}
