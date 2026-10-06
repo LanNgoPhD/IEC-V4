@@ -40,7 +40,7 @@
         <div id="examAttempts" class="statusbar centered-status">Đang tải số lần thi...</div>
       </div>
       <div class="exam-grid exam-parent-grid">
-        <button class="exam-parent-card" onclick="showFrame('morning.html','exam')">
+        <button id="examMorningCard" class="exam-parent-card" onclick="showFrame('morning.html','exam')">
           <b>CA SÁNG</b>
           <span>Thi viết TỪ MỚI + ĐỎ CŨ</span>
           <em id="examMorningMeta">Đang tải...</em>
@@ -260,6 +260,23 @@ function renderExamOverview(d){
       examDrillMeta.textContent='ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ';
     }
   }
+
+  // Khi CA CUỐI NGÀY đã mở thì CA SÁNG cũng phải đóng.
+  const morningCard=document.getElementById('examMorningCard');
+  if(morningCard){
+    morningCard.disabled=finalOpened;
+    morningCard.style.opacity=finalOpened?'0.48':'';
+    morningCard.style.cursor=finalOpened?'not-allowed':'';
+    morningCard.onclick=finalOpened
+      ? null
+      : function(){showFrame('morning.html','exam');};
+
+    if(finalOpened){
+      examMorningMeta.textContent='ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ';
+    }
+  }
+
+}
 }
 async function openExamOverview(){
   showView('examView');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='exam'));
