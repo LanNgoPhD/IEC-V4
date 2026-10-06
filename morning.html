@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>IEC V4.1 – Bài thi viết sáng</title>
-  <link rel="stylesheet" href="styles.css?v=20261006.2">
+  <link rel="stylesheet" href="styles.css?v=20261006.3">
   <script src="config.js?v=20261006.1"></script>
   <script src="common.js?v=20261005.2"></script>
 </head>
@@ -77,7 +77,7 @@ async function loadData(){
   if(!DATA||DATA.ok===false)throw new Error(DATA&&DATA.error||'Không tải được bài thi viết sáng');
 
   const used=Number(DATA.attempts&&DATA.attempts.used||0);
-  const max=Number(DATA.attempts&&DATA.attempts.max||1);
+  const max=Number(DATA.attempts&&DATA.attempts.max||0);
   const remaining=Number(DATA.attempts&&DATA.attempts.remaining||0);
 
   morningRule.textContent=
@@ -118,7 +118,7 @@ function renderWriteTest(){
   msg.textContent='';
   testTitle.textContent=
     'Bài thi viết · Lần '+Math.min(
-      Number(DATA.attempts&&DATA.attempts.max||1),
+      Number(DATA.attempts&&DATA.attempts.max||0),
       Number(DATA.attempts&&DATA.attempts.used||0)+1
     );
   testCard.classList.remove('hidden');
@@ -159,7 +159,7 @@ function handleMessage(e){
   }
 
   const used=Number(d.attempts&&d.attempts.used||0);
-  const max=Number(d.attempts&&d.attempts.max||1);
+  const max=Number(d.attempts&&d.attempts.max||0);
   const remaining=Number(d.attempts&&d.attempts.remaining||0);
   const red=Number(d.repairNeeded||0);
 

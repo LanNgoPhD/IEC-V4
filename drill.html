@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>IEC V4.1 – Luyện tập / Ca giữa ngày</title>
-  <link rel="stylesheet" href="styles.css?v=20261006.2">
+  <link rel="stylesheet" href="styles.css?v=20261006.3">
   <script src="config.js?v=20261006.1"></script>
   <script src="common.js?v=20261005.2"></script>
 </head>
@@ -30,68 +30,133 @@
     <div id="pageRule" class="sub">Luyện tự do không làm thay đổi số lần thi chính thức.</div>
     <div id="meta" class="statusbar">Đang tải...</div>
 
-    <div id="ttsBox" class="row tts-settings hidden">
-      <label>Giọng đọc</label>
-      <select id="voicePreset" aria-label="Giọng đọc"><option>Nam – Mỹ</option><option>Nữ – Anh</option></select>
-      <label>Tốc độ</label>
-      <select id="rate" aria-label="Tốc độ đọc"></select>
+    <div id="practiceHeaderActions" class="practice-header-actions hidden">
+      <div id="ttsBox" class="row tts-settings">
+        <label>Giọng đọc</label>
+        <select id="voicePreset" aria-label="Giọng đọc"><option>Nam – Mỹ</option><option>Nữ – Anh</option></select>
+        <label>Tốc độ</label>
+        <select id="rate" aria-label="Tốc độ đọc"></select>
+      </div>
       <button id="greenBtn" class="secondary">KẾT QUẢ XANH LÁ</button>
     </div>
   </div>
 
   <!-- PRACTICE ONLY -->
   <div id="practiceView" class="hidden">
-    <div id="newCard" class="card hidden">
-      <h2>LUYỆN NGHE – NÓI · TỪ MỚI HÔM NAY</h2>
-      <div class="muted">Được nhìn tiếng Anh và phiên âm. Nghe mẫu, nghe lặp và luyện nói tự do.</div>
-      <div id="newList"></div>
+    <div id="practiceNavCard" class="card hidden">
+      <h2>LUYỆN TẬP</h2>
+      <div class="muted">Chọn nhóm luyện tập. Mỗi lần chỉ hiển thị nội dung đang chọn để tránh trang quá dài.</div>
+
+      <div class="practice-level practice-level-parent" role="tablist" aria-label="Nhóm luyện tập">
+        <button class="practiceParent active" data-group="listen">LUYỆN NGHE – NÓI</button>
+        <button class="practiceParent secondary" data-group="write">LUYỆN VIẾT</button>
+      </div>
+
+      <div id="listenSubNav" class="practice-level practice-level-child" role="tablist" aria-label="Luyện nghe nói">
+        <button class="practiceChild active" data-panel="word">NGHE TỪ</button>
+        <button class="practiceChild secondary" data-panel="chain">NGHE CỤM TỪ</button>
+      </div>
+
+      <div id="writeSubNav" class="practice-level practice-level-child hidden" role="tablist" aria-label="Luyện viết">
+        <button class="practiceChild secondary" data-panel="vietwrite">VIỆT → ANH</button>
+        <button class="practiceChild secondary" data-panel="dictation">CHÍNH TẢ</button>
+      </div>
+
+      <div class="practice-free-note">Luyện tập tự do · không thay đổi trạng thái · không tính vào số lần thi chính thức.</div>
     </div>
 
-    <div id="repairPracticeCard" class="card hidden">
-      <h2>LUYỆN SỬA ĐỎ – VÀNG</h2>
-      <div class="muted">Đây là luyện tập tự do, không đổi màu và không làm mất lần thi chính thức.</div>
-
-      <div id="redPracticeBlock" class="practice-block hidden">
-        <h3>ĐỎ – Chưa đạt thi viết</h3>
-        <div id="redPracticeList"></div>
+    <div id="wordPanel" class="card practiceContent hidden">
+      <div class="section-head">
+        <div>
+          <h2>NGHE TỪ · TỪ MỚI + ĐỎ CŨ</h2>
+          <div class="muted">Nghe, di chuyển trong danh sách và luyện nói từng từ/cụm từ.</div>
+        </div>
+        <div id="wordProgress" class="practice-progress"></div>
       </div>
-
-      <div id="yellowPracticeBlock" class="practice-block hidden">
-        <h3>VÀNG – Chưa đạt thi nói</h3>
-        <div id="yellowPracticeList"></div>
+      <div id="wordPlayer" class="practice-player">
+        <div id="wordTag" class="tag"></div>
+        <div id="wordVn" class="vn">---</div>
+        <div id="wordEn" class="en">---</div>
+        <div id="wordIpa" class="ipa"></div>
+      </div>
+      <div class="practice-player-controls" aria-label="Điều khiển nghe từ">
+        <button id="wordFirst" class="secondary" title="Về đầu">⏮ ĐẦU</button>
+        <button id="wordPrev" class="secondary" title="Lùi một mục">◀ LÙI</button>
+        <button id="wordPlay">▶ PHÁT</button>
+        <button id="wordStop" class="secondary">⏸ DỪNG</button>
+        <button id="wordNext" class="secondary" title="Sang mục tiếp theo">▶ TIẾP</button>
+        <button id="wordLast" class="secondary" title="Tới cuối">CUỐI ⏭</button>
+      </div>
+      <div class="practice-speak-row">
+        <button id="wordSpeak" class="secondary">🎤 LUYỆN NÓI</button>
+        <span id="wordSpeakResult" class="practiceResult muted"></span>
       </div>
     </div>
 
-    <div id="practiceTools" class="card hidden">
-      <h2>LUYỆN BỔ TRỢ</h2>
-      <div class="portal-tabs compact">
-        <button class="secondary practiceTab active" data-tool="memory">NHỚ TỪ</button>
-        <button class="secondary practiceTab" data-tool="dictation">CHÍNH TẢ</button>
-        <button class="secondary practiceTab" data-tool="chain">NGHE LIÊN TỤC</button>
-      </div>
-
-      <div id="memoryTool" class="practicePanel"></div>
-
-      <div id="dictationTool" class="practicePanel hidden">
-        <div id="dictationPrompt" class="msg">Bấm BẮT ĐẦU để luyện chính tả.</div>
-        <div class="row">
-          <button id="dictationStart">BẮT ĐẦU</button>
-          <button id="dictationListen" class="secondary" disabled>🔊 NGHE LẠI</button>
+    <div id="chainPanel" class="card practiceContent hidden">
+      <div class="section-head">
+        <div>
+          <h2>NGHE CỤM TỪ · TỪ MỚI + ĐỎ CŨ</h2>
+          <div id="chainRule" class="muted"></div>
         </div>
-        <input id="dictationInput" class="hidden" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Viết từ/cụm tiếng Anh vừa nghe">
-        <button id="dictationCheck" class="hidden">KIỂM TRA VIẾT</button>
-        <div id="dictationMeaning" class="hidden"></div>
-        <div id="dictationMsg" class="msg hidden"></div>
+        <div id="chainProgress" class="practice-progress"></div>
       </div>
+      <div id="chainPlayer" class="practice-player">
+        <div id="chainTag" class="tag"></div>
+        <div id="chainVn" class="vn">---</div>
+        <div id="chainEn" class="en">---</div>
+        <div id="chainIpa" class="ipa"></div>
+      </div>
+      <div class="practice-player-controls" aria-label="Điều khiển nghe cụm từ">
+        <button id="chainFirst" class="secondary" title="Về đầu">⏮ ĐẦU</button>
+        <button id="chainPrev" class="secondary" title="Lùi một mục">◀ LÙI</button>
+        <button id="chainPlay">▶ PHÁT</button>
+        <button id="chainStop" class="secondary">⏸ DỪNG</button>
+        <button id="chainNext" class="secondary" title="Sang mục tiếp theo">▶ TIẾP</button>
+        <button id="chainLast" class="secondary" title="Tới cuối">CUỐI ⏭</button>
+      </div>
+      <div class="practice-speak-row">
+        <button id="chainNew" class="secondary">↻ CỤM MỚI</button>
+        <button id="chainSpeak" class="secondary">🎤 LUYỆN NÓI</button>
+        <span id="chainSpeakResult" class="practiceResult muted"></span>
+      </div>
+      <div id="chainMsg" class="msg"></div>
+    </div>
 
-      <div id="chainTool" class="practicePanel hidden">
-        <div id="chainRule" class="muted"></div>
-        <div class="row">
-          <button id="chainStart">▶ NGHE LIÊN TỤC</button>
-          <button id="chainStop" class="secondary">DỪNG</button>
+    <div id="vietwritePanel" class="card practiceContent hidden">
+      <div class="section-head">
+        <div>
+          <h2>LUYỆN VIẾT · VIỆT → ANH</h2>
+          <div class="muted">Nhìn nghĩa tiếng Việt và tự viết tiếng Anh. Không có nút hiện đáp án.</div>
         </div>
-        <div id="chainMsg" class="msg"></div>
+        <div id="vietwriteProgress" class="practice-progress"></div>
       </div>
+      <div id="vietwriteTag" class="tag"></div>
+      <div id="vietwriteVn" class="bigword practice-write-prompt">---</div>
+      <input id="vietwriteInput" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Nhập tiếng Anh">
+      <div class="row practice-action-row">
+        <button id="vietwriteCheck">KIỂM TRA</button>
+        <button id="vietwriteNext" class="secondary" disabled>TIẾP THEO</button>
+      </div>
+      <div id="vietwriteMsg" class="msg"></div>
+    </div>
+
+    <div id="dictationPanel" class="card practiceContent hidden">
+      <div class="section-head">
+        <div>
+          <h2>LUYỆN VIẾT · CHÍNH TẢ</h2>
+          <div class="muted">Nghe tiếng Anh → viết đúng tiếng Anh → nếu đúng mới chọn nghĩa tiếng Việt.</div>
+        </div>
+      </div>
+      <div id="dictationPrompt" class="msg">Bấm BẮT ĐẦU để luyện chính tả.</div>
+      <div class="row practice-action-row">
+        <button id="dictationStart">BẮT ĐẦU</button>
+        <button id="dictationListen" class="secondary" disabled>🔊 NGHE LẠI</button>
+      </div>
+      <input id="dictationInput" class="hidden" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Viết từ/cụm tiếng Anh vừa nghe">
+      <button id="dictationCheck" class="hidden">KIỂM TRA VIẾT</button>
+      <div id="dictationMeaning" class="hidden"></div>
+      <div id="dictationMsg" class="msg hidden"></div>
     </div>
 
     <div id="greenCard" class="card hidden">
@@ -107,7 +172,7 @@
 
     <div id="practiceEmpty" class="card hidden">
       <h2>LUYỆN TẬP</h2>
-      <div class="msg ok">Chưa có nội dung luyện tập cho ngày này.</div>
+      <div class="msg ok">Chưa có TỪ MỚI hoặc ĐỎ CŨ cần luyện tập cho ngày này.</div>
     </div>
   </div>
 
@@ -164,7 +229,10 @@ let CTX,DATA,activePost='';
 const EXAM_ONLY=qp('examOnly')==='1';
 const rateSelect=document.getElementById('rate');
 const voicePresetSelect=document.getElementById('voicePreset');
-let dictationCurrent=null,chainCancelled=false;
+let dictationCurrent=null;
+let wordIndex=0,writeIndex=0,writeOrder=[];
+let chainItems=[],chainIndex=0,chainRunToken=0,chainPlaying=false,chainCompleted=false;
+let activePracticePanel='word';
 
 function inheritClientConfig(){
   try{
@@ -215,22 +283,27 @@ function shuffleCopy(a){
 }
 function allPracticeItems(){
   const seen={},out=[];
-  [].concat(DATA&&DATA.newItems||[],DATA&&DATA.redItems||[],DATA&&DATA.yellowItems||[]).forEach(function(x){
+  [].concat(DATA&&DATA.newItems||[],DATA&&DATA.redItems||[]).forEach(function(x){
     if(x&&x.contentId&&!seen[x.contentId]){seen[x.contentId]=1;out.push(x);}
   });
   return out;
 }
+function practiceSourceLabel(it){
+  const id=it&&it.contentId;
+  if((DATA&&DATA.redItems||[]).some(x=>x&&x.contentId===id))return 'ĐỎ CŨ';
+  return 'TỪ MỚI';
+}
 function setPageHeader(){
   if(EXAM_ONLY){
     pageTitle.textContent='CA GIỮA NGÀY';
-    pageRule.textContent='Sửa ĐỎ bằng bài viết · Thi nói VÀNG · Chỉ phần này làm thay đổi trạng thái.';
-    ttsBox.classList.add('hidden');
+    pageRule.textContent='Cải thiện ĐỎ thành VÀNG bằng bài thi viết và VÀNG thành XANH BIỂN bằng bài thi nói.';
+    practiceHeaderActions.classList.add('hidden');
     practiceView.classList.add('hidden');
     examViewLocal.classList.remove('hidden');
   }else{
     pageTitle.textContent='LUYỆN TẬP';
-    pageRule.textContent='NGHE – NÓI · SỬA ĐỎ – VÀNG · CHÍNH TẢ · NGHE LIÊN TỤC · Không làm mất lần thi chính thức.';
-    ttsBox.classList.remove('hidden');
+    pageRule.textContent='TỪ MỚI + ĐỎ CŨ · luyện tập tự do, không thay đổi trạng thái và không tính vào số lần thi chính thức.';
+    practiceHeaderActions.classList.remove('hidden');
     practiceView.classList.remove('hidden');
     examViewLocal.classList.add('hidden');
   }
@@ -258,92 +331,275 @@ async function loadData(){
   meta.textContent='Đang tải...';
   applyData(await fetchData());
 }
-function makeStudyItem(it,i,label,allowSpeak){
-  const d=document.createElement('div');
-  d.className='item';
-  d.innerHTML=
-    '<div class="tag"></div>'+
-    '<div class="vn"></div>'+
-    '<div class="en"></div>'+
-    '<div class="ipa"></div>'+
-    '<div class="tts">'+
-      '<button class="secondary listen">🔊 Nghe</button>'+
-      '<button class="secondary repeat">🔁 Nghe ×'+Number(IEC_CONFIG.TTS_REPEAT||3)+'</button>'+
-      (allowSpeak?'<button class="secondary practice">🎤 Luyện nói</button><span class="practiceResult muted"></span>':'')+
-    '</div>';
-  d.querySelector('.tag').textContent=String(i+1).padStart(2,'0')+' · '+label+' · '+it.contentId;
-  d.querySelector('.vn').textContent=it.vietnamese;
-  d.querySelector('.en').textContent=it.english;
-  d.querySelector('.ipa').textContent=it.ipa||'';
-  d.querySelector('.listen').onclick=()=>ttsSpeak(it.english,selectedTtsRate(),1);
-  d.querySelector('.repeat').onclick=()=>ttsSpeak(it.english,selectedTtsRate(),Number(IEC_CONFIG.TTS_REPEAT||3));
-
-  if(allowSpeak){
-    d.querySelector('.practice').onclick=async function(){
-      const out=d.querySelector('.practiceResult');
-      out.textContent='Đang nghe...';
-      try{
-        const r=await oneShotSpeech(
-          it.english,
-          DATA.practiceSpeech.profile,
-          DATA.practiceSpeech.contextPhrases,
-          function(st,h){out.textContent=h?'Máy nghe: '+h:st;}
-        );
-        out.textContent=(r.pass?'ĐẠT NHẬN DIỆN · ':'CHƯA ĐẠT · ')+(r.heard||'không nhận được chữ');
-      }catch(e){
-        out.textContent=String(e.message||e);
-      }
-    };
-  }
-  return d;
-}
-function renderStudyList(container,items,label){
-  container.innerHTML='';
-  (items||[]).forEach(function(it,i){container.appendChild(makeStudyItem(it,i,label,true));});
+function stopPracticeAudio(){
+  chainRunToken++;
+  chainPlaying=false;
+  stopTts();
 }
 function renderPractice(){
-  const newItems=DATA.newItems||[],redItems=DATA.redItems||[],yellowItems=DATA.yellowItems||[];
-  const all=allPracticeItems();
-
-  newCard.classList.toggle('hidden',!newItems.length);
-  renderStudyList(newList,newItems,'TỪ MỚI');
-
-  repairPracticeCard.classList.toggle('hidden',!(redItems.length||yellowItems.length));
-  redPracticeBlock.classList.toggle('hidden',!redItems.length);
-  yellowPracticeBlock.classList.toggle('hidden',!yellowItems.length);
-  renderStudyList(redPracticeList,redItems,'ĐỎ');
-  renderStudyList(yellowPracticeList,yellowItems,'VÀNG');
-
-  renderPracticeTools();
-  practiceEmpty.classList.toggle('hidden',all.length>0);
-
-  const n=Math.max(3,Math.min(5,Number(IEC_CONFIG.LISTEN_CHAIN_COUNT||4)));
-  const gap=Math.max(.5,Math.min(8,Number(IEC_CONFIG.LISTEN_CHAIN_GAP_SEC||2)));
-  chainRule.textContent='Mỗi lượt: '+n+' từ/cụm từ liên tiếp · cách nhau '+gap+' giây.';
-}
-function renderPracticeTools(){
   const items=allPracticeItems();
-  practiceTools.classList.toggle('hidden',!items.length);
-  memoryTool.innerHTML='';
-  if(!items.length)return;
+  const hasItems=items.length>0;
+  practiceNavCard.classList.toggle('hidden',!hasItems);
+  practiceEmpty.classList.toggle('hidden',hasItems);
+  if(!hasItems){
+    document.querySelectorAll('.practiceContent').forEach(x=>x.classList.add('hidden'));
+    return;
+  }
 
-  items.forEach(function(it,i){
-    const d=document.createElement('div');
-    d.className='memory-row';
-    d.innerHTML=
-      '<div><b></b><div class="muted"></div></div>'+
-      '<button class="secondary">HIỆN ĐÁP ÁN</button>'+
-      '<div class="memory-answer hidden"></div>';
-    d.querySelector('b').textContent=(i+1)+'. '+it.vietnamese;
-    d.querySelector('.muted').textContent=it.contentId||'';
-    const ans=d.querySelector('.memory-answer');
-    ans.textContent=it.english+(it.ipa?' · '+it.ipa:'');
-    d.querySelector('button').onclick=function(){
-      ans.classList.toggle('hidden');
-      this.textContent=ans.classList.contains('hidden')?'HIỆN ĐÁP ÁN':'ẨN ĐÁP ÁN';
-    };
-    memoryTool.appendChild(d);
+  if(wordIndex>=items.length)wordIndex=0;
+  if(!writeOrder.length||writeOrder.some(x=>!items.some(y=>y.contentId===x.contentId))){
+    writeOrder=shuffleCopy(items);
+    writeIndex=0;
+  }
+  ensureChainGroup(false);
+  renderWordPanel();
+  renderChainPanel();
+  renderVietWritePanel();
+  selectPracticePanel(activePracticePanel||'word',false);
+}
+function renderWordPanel(){
+  const items=allPracticeItems();
+  if(!items.length)return;
+  wordIndex=Math.max(0,Math.min(items.length-1,wordIndex));
+  const it=items[wordIndex];
+  wordProgress.textContent=(wordIndex+1)+'/'+items.length;
+  wordTag.textContent=practiceSourceLabel(it)+' · '+(it.contentId||'');
+  wordVn.textContent=it.vietnamese||'';
+  wordEn.textContent=it.english||'';
+  wordIpa.textContent=it.ipa||'';
+  wordPrev.disabled=wordFirst.disabled=wordIndex<=0;
+  wordNext.disabled=wordLast.disabled=wordIndex>=items.length-1;
+  wordSpeak.disabled=false;
+}
+function moveWord(where){
+  const items=allPracticeItems();
+  if(!items.length)return;
+  stopPracticeAudio();
+  if(where==='first')wordIndex=0;
+  else if(where==='prev')wordIndex=Math.max(0,wordIndex-1);
+  else if(where==='next')wordIndex=Math.min(items.length-1,wordIndex+1);
+  else if(where==='last')wordIndex=items.length-1;
+  wordSpeakResult.textContent='';
+  renderWordPanel();
+}
+async function speakPracticeItem(it,out){
+  if(!it||!out)return;
+  out.textContent='Đang nghe...';
+  try{
+    const r=await oneShotSpeech(
+      it.english,
+      DATA.practiceSpeech.profile,
+      DATA.practiceSpeech.contextPhrases,
+      function(st,h){out.textContent=h?'Máy nghe: '+h:st;}
+    );
+    out.textContent=(r.pass?'ĐẠT NHẬN DIỆN · ':'CHƯA ĐẠT · ')+(r.heard||'không nhận được chữ');
+  }catch(e){
+    out.textContent=String(e.message||e);
+  }
+}
+function configuredChainCount(){
+  const v=Math.floor(Number(IEC_CONFIG&&IEC_CONFIG.LISTEN_CHAIN_COUNT));
+  return Number.isFinite(v)&&v>0?v:1;
+}
+function configuredChainGap(){
+  const v=Number(IEC_CONFIG&&IEC_CONFIG.LISTEN_CHAIN_GAP_SEC);
+  return Number.isFinite(v)&&v>=0?v:0;
+}
+function ensureChainGroup(force){
+  const pool=allPracticeItems();
+  if(!pool.length){chainItems=[];chainIndex=0;return;}
+  const valid=!force&&chainItems.length&&chainItems.every(x=>pool.some(y=>y.contentId===x.contentId));
+  if(valid)return;
+  const n=Math.min(pool.length,configuredChainCount());
+  chainItems=shuffleCopy(pool).slice(0,n);
+  chainIndex=0;
+  chainCompleted=false;
+}
+function renderChainPanel(){
+  ensureChainGroup(false);
+  if(!chainItems.length)return;
+  chainIndex=Math.max(0,Math.min(chainItems.length-1,chainIndex));
+  const it=chainItems[chainIndex];
+  chainProgress.textContent=(chainIndex+1)+'/'+chainItems.length;
+  chainRule.textContent='Cụm gồm '+chainItems.length+' mục · khoảng nghỉ '+configuredChainGap()+' giây · cụm được giữ nguyên cho tới khi bấm CỤM MỚI.';
+  chainTag.textContent=practiceSourceLabel(it)+' · '+(it.contentId||'');
+  chainVn.textContent=it.vietnamese||'';
+  chainEn.textContent=it.english||'';
+  chainIpa.textContent=it.ipa||'';
+  chainFirst.disabled=chainPrev.disabled=chainIndex<=0;
+  chainNext.disabled=chainLast.disabled=chainIndex>=chainItems.length-1;
+  chainSpeak.disabled=false;
+}
+function moveChain(where){
+  if(!chainItems.length)return;
+  stopPracticeAudio();
+  if(where==='first')chainIndex=0;
+  else if(where==='prev')chainIndex=Math.max(0,chainIndex-1);
+  else if(where==='next')chainIndex=Math.min(chainItems.length-1,chainIndex+1);
+  else if(where==='last')chainIndex=chainItems.length-1;
+  chainCompleted=false;
+  chainSpeakResult.textContent='';
+  setMsg(chainMsg,'Vị trí '+(chainIndex+1)+'/'+chainItems.length+'.');
+  renderChainPanel();
+}
+async function playChainFromCurrent(){
+  ensureChainGroup(false);
+  if(!chainItems.length||chainPlaying)return;
+  if(chainCompleted){chainIndex=0;chainCompleted=false;}
+  chainPlaying=true;
+  const token=++chainRunToken;
+  chainPlay.disabled=true;
+  const gap=configuredChainGap();
+
+  try{
+    while(chainIndex<chainItems.length&&token===chainRunToken){
+      renderChainPanel();
+      setMsg(chainMsg,'Đang nghe '+(chainIndex+1)+'/'+chainItems.length+'...');
+      await ttsSpeak(chainItems[chainIndex].english,selectedTtsRate(),1);
+      if(token!==chainRunToken)break;
+      if(chainIndex>=chainItems.length-1){
+        chainCompleted=true;
+        setMsg(chainMsg,'Hoàn thành '+chainItems.length+'/'+chainItems.length+'. Bấm PHÁT để nghe lại đúng cụm này.','ok');
+        break;
+      }
+      if(gap>0)await new Promise(r=>setTimeout(r,gap*1000));
+      if(token!==chainRunToken)break;
+      chainIndex++;
+    }
+  }finally{
+    if(token===chainRunToken){
+      chainPlaying=false;
+      chainPlay.disabled=false;
+      renderChainPanel();
+    }
+  }
+}
+function stopChain(){
+  if(!chainItems.length)return;
+  chainRunToken++;
+  chainPlaying=false;
+  chainCompleted=false;
+  stopTts();
+  chainPlay.disabled=false;
+  setMsg(chainMsg,'Đã dừng tại '+(chainIndex+1)+'/'+chainItems.length+'. Bấm PHÁT để tiếp tục từ vị trí này.');
+}
+function newChain(){
+  stopChain();
+  ensureChainGroup(true);
+  chainSpeakResult.textContent='';
+  setMsg(chainMsg,'Đã tạo CỤM MỚI · '+chainItems.length+' mục.');
+  renderChainPanel();
+}
+function ensureWriteOrder(){
+  const pool=allPracticeItems();
+  if(!pool.length){writeOrder=[];writeIndex=0;return;}
+  const valid=writeOrder.length===pool.length&&writeOrder.every(x=>pool.some(y=>y.contentId===x.contentId));
+  if(!valid){writeOrder=shuffleCopy(pool);writeIndex=0;}
+}
+function renderVietWritePanel(){
+  ensureWriteOrder();
+  if(!writeOrder.length)return;
+  writeIndex=Math.max(0,Math.min(writeOrder.length-1,writeIndex));
+  const it=writeOrder[writeIndex];
+  vietwriteProgress.textContent=(writeIndex+1)+'/'+writeOrder.length;
+  vietwriteTag.textContent=practiceSourceLabel(it)+' · '+(it.contentId||'');
+  vietwriteVn.textContent=it.vietnamese||'';
+  vietwriteInput.dataset.contentId=it.contentId||'';
+  vietwriteInput.value='';
+  vietwriteInput.disabled=false;
+  vietwriteCheck.disabled=false;
+  vietwriteNext.disabled=true;
+  vietwriteMsg.className='msg';
+  vietwriteMsg.textContent='';
+}
+function checkVietWrite(){
+  ensureWriteOrder();
+  const it=writeOrder[writeIndex];
+  if(!it)return;
+  const got=normalizeSpeech(vietwriteInput.value);
+  const exp=normalizeSpeech(it.english);
+  if(got===exp){
+    setMsg(vietwriteMsg,'ĐÚNG.','ok');
+    vietwriteInput.disabled=true;
+    vietwriteCheck.disabled=true;
+    vietwriteNext.disabled=false;
+  }else{
+    setMsg(vietwriteMsg,'CHƯA ĐÚNG. Hãy tự sửa và thử lại; không hiển thị đáp án.','err');
+    vietwriteInput.focus();
+  }
+}
+function nextVietWrite(){
+  ensureWriteOrder();
+  if(!writeOrder.length)return;
+  writeIndex++;
+  if(writeIndex>=writeOrder.length){
+    writeOrder=shuffleCopy(allPracticeItems());
+    writeIndex=0;
+  }
+  renderVietWritePanel();
+  setTimeout(()=>vietwriteInput.focus(),60);
+}
+function updatePracticeNav(panel){
+  const group=(panel==='word'||panel==='chain')?'listen':'write';
+  document.querySelectorAll('.practiceParent').forEach(function(b){
+    const on=b.dataset.group===group;
+    b.classList.toggle('active',on);b.classList.toggle('secondary',!on);
   });
+  listenSubNav.classList.toggle('hidden',group!=='listen');
+  writeSubNav.classList.toggle('hidden',group!=='write');
+  document.querySelectorAll('.practiceChild').forEach(function(b){
+    const on=b.dataset.panel===panel;
+    b.classList.toggle('active',on);b.classList.toggle('secondary',!on);
+  });
+}
+function selectPracticePanel(panel,focus){
+  const allowed=['word','chain','vietwrite','dictation'];
+  if(!allowed.includes(panel))panel='word';
+  stopPracticeAudio();
+  activePracticePanel=panel;
+  updatePracticeNav(panel);
+  document.querySelectorAll('.practiceContent').forEach(function(x){x.classList.add('hidden');});
+  const target=document.getElementById(panel+'Panel');
+  if(target)target.classList.remove('hidden');
+  ttsBox.classList.toggle('hidden',panel==='vietwrite');
+  if(panel==='word')renderWordPanel();
+  if(panel==='chain')renderChainPanel();
+  if(panel==='vietwrite')renderVietWritePanel();
+  if(focus&&target)target.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function bindPracticeTools(){
+  document.querySelectorAll('.practiceParent').forEach(function(b){
+    b.onclick=function(){selectPracticePanel(b.dataset.group==='listen'?'word':'vietwrite',true);};
+  });
+  document.querySelectorAll('.practiceChild').forEach(function(b){
+    b.onclick=function(){selectPracticePanel(b.dataset.panel,true);};
+  });
+
+  wordFirst.onclick=()=>moveWord('first');
+  wordPrev.onclick=()=>moveWord('prev');
+  wordNext.onclick=()=>moveWord('next');
+  wordLast.onclick=()=>moveWord('last');
+  wordPlay.onclick=function(){const it=allPracticeItems()[wordIndex];if(it)ttsSpeak(it.english,selectedTtsRate(),1);};
+  wordStop.onclick=function(){stopTts();};
+  wordSpeak.onclick=function(){speakPracticeItem(allPracticeItems()[wordIndex],wordSpeakResult);};
+
+  chainFirst.onclick=()=>moveChain('first');
+  chainPrev.onclick=()=>moveChain('prev');
+  chainNext.onclick=()=>moveChain('next');
+  chainLast.onclick=()=>moveChain('last');
+  chainPlay.onclick=playChainFromCurrent;
+  chainStop.onclick=stopChain;
+  chainNew.onclick=newChain;
+  chainSpeak.onclick=function(){speakPracticeItem(chainItems[chainIndex],chainSpeakResult);};
+
+  vietwriteCheck.onclick=checkVietWrite;
+  vietwriteNext.onclick=nextVietWrite;
+  vietwriteInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!vietwriteCheck.disabled)checkVietWrite();});
+
+  dictationStart.onclick=startDictation;
+  dictationListen.onclick=function(){if(dictationCurrent)ttsSpeak(dictationCurrent.english,selectedTtsRate(),1);};
+  dictationCheck.onclick=checkDictation;
+  dictationInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!dictationCheck.classList.contains('hidden'))checkDictation();});
 }
 function renderExam(){
   writeCard.classList.add('hidden');
@@ -400,12 +656,16 @@ function startDictation(){
   const items=allPracticeItems();
   if(!items.length)return;
 
+  stopPracticeAudio();
   dictationCurrent=items[Math.floor(Math.random()*items.length)];
   dictationPrompt.textContent='Nghe tiếng Anh → viết đúng tiếng Anh → chọn nghĩa Việt.';
   dictationInput.value='';
+  dictationInput.disabled=false;
   dictationInput.classList.remove('hidden');
+  dictationCheck.disabled=false;
   dictationCheck.classList.remove('hidden');
   dictationListen.disabled=false;
+  dictationStart.textContent='CÂU MỚI';
   dictationMeaning.classList.add('hidden');
   dictationMeaning.innerHTML='';
   dictationMsg.classList.add('hidden');
@@ -418,14 +678,17 @@ function checkDictation(){
   dictationMsg.classList.remove('hidden');
 
   if(got!==exp){
-    setMsg(dictationMsg,'CHƯA ĐÚNG. Nghe lại và viết lại; đây là luyện tập nên không đổi màu.','err');
+    setMsg(dictationMsg,'CHƯA ĐÚNG. Nghe lại và tự sửa; không hiển thị đáp án.','err');
     return;
   }
 
+  dictationInput.disabled=true;
+  dictationCheck.disabled=true;
   setMsg(dictationMsg,'VIẾT ĐÚNG. Bây giờ chọn nghĩa tiếng Việt.','ok');
   const items=allPracticeItems();
-  const n=Math.max(2,Math.min(6,Number(IEC_CONFIG.DICTATION_MEANING_OPTIONS||4)));
-  const others=shuffleCopy(items.filter(x=>x.contentId!==dictationCurrent.contentId)).slice(0,n-1);
+  const configured=Math.floor(Number(IEC_CONFIG&&IEC_CONFIG.DICTATION_MEANING_OPTIONS));
+  const n=Math.min(items.length,Number.isFinite(configured)&&configured>1?configured:2);
+  const others=shuffleCopy(items.filter(x=>x.contentId!==dictationCurrent.contentId)).slice(0,Math.max(0,n-1));
   const opts=shuffleCopy([dictationCurrent].concat(others));
 
   dictationMeaning.innerHTML='<div class="muted" style="margin:8px 0">Chọn nghĩa đúng:</div>';
@@ -439,52 +702,13 @@ function checkDictation(){
       if(x.contentId===dictationCurrent.contentId){
         setMsg(dictationMsg,'ĐÚNG · hoàn thành một lượt CHÍNH TẢ.','ok');
         document.querySelectorAll('.meaningChoice').forEach(q=>q.disabled=true);
+        dictationStart.textContent='CÂU TIẾP THEO';
       }else{
         setMsg(dictationMsg,'CHƯA ĐÚNG NGHĨA. Chọn lại.','err');
       }
     };
     dictationMeaning.appendChild(b);
   });
-}
-async function startListenChain(){
-  const items=shuffleCopy(allPracticeItems());
-  if(!items.length)return;
-
-  chainCancelled=false;
-  const n=Math.min(items.length,Math.max(3,Math.min(5,Number(IEC_CONFIG.LISTEN_CHAIN_COUNT||4))));
-  const gap=Math.max(.5,Math.min(8,Number(IEC_CONFIG.LISTEN_CHAIN_GAP_SEC||2)));
-  const chosen=items.slice(0,n);
-
-  chainStart.disabled=true;
-  setMsg(chainMsg,'Bắt đầu chuỗi '+n+' từ/cụm. Hãy chỉ nghe, không nhìn đáp án.');
-
-  for(let i=0;i<chosen.length&&!chainCancelled;i++){
-    setMsg(chainMsg,'Đang phát '+(i+1)+' / '+chosen.length+'...');
-    await ttsSpeak(chosen[i].english,selectedTtsRate(),1);
-    if(i<chosen.length-1&&!chainCancelled)await new Promise(r=>setTimeout(r,gap*1000));
-  }
-
-  if(!chainCancelled)setMsg(chainMsg,'Hoàn thành chuỗi '+n+' từ/cụm.','ok');
-  chainStart.disabled=false;
-}
-function bindPracticeTools(){
-  document.querySelectorAll('.practiceTab').forEach(function(b){
-    b.onclick=function(){
-      document.querySelectorAll('.practiceTab').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');
-      ['memory','dictation','chain'].forEach(function(k){
-        document.getElementById(k+'Tool').classList.toggle('hidden',k!==b.dataset.tool);
-      });
-    };
-  });
-  dictationStart.onclick=startDictation;
-  dictationListen.onclick=function(){if(dictationCurrent)ttsSpeak(dictationCurrent.english,selectedTtsRate(),1);};
-  dictationCheck.onclick=checkDictation;
-  chainStart.onclick=startListenChain;
-  chainStop.onclick=function(){
-    chainCancelled=true;stopTts();setMsg(chainMsg,'Đã dừng.');
-    chainStart.disabled=false;
-  };
 }
 function showIosSpeakGuide(){
   return new Promise(resolve=>{

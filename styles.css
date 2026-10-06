@@ -109,3 +109,41 @@ button.danger{background:var(--bad)}
     gap:7px;
   }
 }
+
+
+/* IEC V4.1 grouped practice UI – 2026-10-06 */
+button,input,select,textarea{font-family:inherit}
+button b,button span{font-family:inherit}
+.practice-header-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px}
+.practice-level{display:grid;gap:10px;margin-top:14px}
+.practice-level-parent{grid-template-columns:repeat(2,minmax(0,1fr))}
+.practice-level-child{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px;background:#f7f9fc;border:1px solid var(--line);border-radius:12px}
+.practice-level button{min-height:52px;font-size:15px}
+.practice-level-parent button{font-size:17px}
+.practice-level button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.practice-free-note{margin-top:12px;padding:9px 11px;border-radius:10px;background:#f2f4f7;color:var(--muted);font-size:13px}
+.practice-progress{min-width:64px;text-align:center;border-radius:999px;background:#eee7f1;color:var(--accent);font-weight:800;padding:7px 11px}
+.practice-player{margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:18px;background:#fbfcfe;min-height:142px}
+.practice-player .vn{font-size:22px}
+.practice-player .en{font-size:20px}
+.practice-player-controls{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:14px}
+.practice-player-controls button{padding:10px 8px;white-space:nowrap}
+.practice-speak-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.practiceResult{font-weight:700;line-height:1.4}
+.practice-action-row{margin:12px 0 8px}
+.practice-write-prompt{padding:20px 8px;text-align:left;font-size:28px}
+#vietwriteInput,#dictationInput{margin:10px 0}
+#dictationCheck{margin-bottom:4px}
+@media(max-width:720px){
+  .practice-level-parent,.practice-level-child{grid-template-columns:1fr 1fr}
+  .practice-level button{min-height:48px;padding:10px 8px}
+  .practice-player-controls{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .practice-player-controls button{font-size:13px}
+  .practice-header-actions{align-items:flex-start}
+  .practice-header-actions .tts-settings{width:100%}
+  .practice-write-prompt{font-size:24px}
+}
+@media(max-width:430px){
+  .practice-level-parent,.practice-level-child{grid-template-columns:1fr}
+  .practice-player-controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

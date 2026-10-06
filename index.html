@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://script.google.com">
   <link rel="preconnect" href="https://script.googleusercontent.com">
   <title>IEC V4.1</title>
-  <link rel="stylesheet" href="styles.css?v=20261006.2">
+  <link rel="stylesheet" href="styles.css?v=20261006.3">
   <script src="config.js?v=20261006.1"></script>
   <script src="common.js?v=20261005.2"></script>
 </head>
@@ -47,7 +47,7 @@
           </button>
           <button onclick="showFrame('drill.html?examOnly=1','exam')">
             <b>CA GIỮA NGÀY</b>
-            <span>Sửa ĐỎ bằng bài viết · thi nói VÀNG</span>
+            <span>Cải thiện ĐỎ thành VÀNG bằng bài thi viết và VÀNG thành XANH BIỂN bằng bài thi nói</span>
           </button>
           <button onclick="showFrame('final.html','exam')">
             <b>CA CUỐI NGÀY</b>
@@ -75,7 +75,7 @@
 <script>
 const ROLE=(qp('role')||'student').toLowerCase();
 const VIEW=(qp('view')||'info').toLowerCase();
-const UI_BUILD='20261006.2';
+const UI_BUILD='20261006.3';
 let CTX=null,STUDENT_INFO=null;
 window.IEC_V4_RUNTIME_CONFIG=null;
 window.IEC_V4_CONFIG_PROMISE=null;
@@ -141,12 +141,16 @@ function uiState(s){
   };
   return m[k]||viState(s);
 }
+function configCount(key){
+  const v=Number(IEC_CONFIG&&IEC_CONFIG[key]);
+  return Number.isFinite(v)&&v>=0?Math.floor(v):'—';
+}
 function updateExamAttempts(){
   if(!IEC_CONFIG)return;
   examAttempts.textContent=
-    'CA SÁNG: tối đa '+Number(IEC_CONFIG.MORNING_MAX_ATTEMPTS||1)+' lần thi · '+
-    'CA GIỮA NGÀY: tối đa '+Number(IEC_CONFIG.DRILL_SPEAK_TEST_MAX_PER_DAY||1)+' lần thi nói · '+
-    'CA CUỐI NGÀY: tối đa '+Number(IEC_CONFIG.FINAL_LAST_MAX_ATTEMPTS||1)+' lần thi.';
+    'CA SÁNG: '+configCount('MORNING_MAX_ATTEMPTS')+' lần thi · '+
+    'CA GIỮA NGÀY: '+configCount('DRILL_SPEAK_TEST_MAX_PER_DAY')+' lần thi · '+
+    'CA CUỐI NGÀY: '+configCount('FINAL_LAST_MAX_ATTEMPTS')+' lần thi';
 }
 async function loadStudentInfo(force){
   if(STUDENT_INFO&&!force){renderStudentInfo(STUDENT_INFO);return STUDENT_INFO;}
@@ -167,13 +171,13 @@ function renderStudentInfo(d){
     '<div class="kpis">'+
       '<div class="kpi"><span>ĐỎ – Chưa đạt thi viết</span><b>'+d.counts.RED+'</b></div>'+
       '<div class="kpi yellowKpi"><span>VÀNG – Chưa đạt thi nói</span><b>'+d.counts.YELLOW+'</b></div>'+
-      '<div class="kpi"><span>XANH LÁ – Chờ TA</span><b>'+d.counts.GREEN+'</b></div>'+
+      '<div class="kpi"><span>XANH LÁ – Chờ trợ giảng xét duyệt</span><b>'+d.counts.GREEN+'</b></div>'+
       '<div class="kpi"><span>XANH BIỂN – Hoàn thành</span><b>'+d.counts.BLUE+'</b></div>'+
     '</div>'+
     '<div class="info-grid portal-info">'+
       '<b>CA SÁNG</b><span>'+esc(uiState(d.morning.status))+
         ' · đã dùng '+d.morning.used+'/'+d.morning.maxAttempts+' lần thi</span>'+
-      '<b>CA GIỮA NGÀY</b><span>Đã dùng '+d.drillSpeak.used+'/'+d.drillSpeak.max+' lần thi nói</span>'+
+      '<b>CA GIỮA NGÀY</b><span>Đã dùng '+d.drillSpeak.used+'/'+d.drillSpeak.max+' lần thi</span>'+
       '<b>CA CUỐI NGÀY</b><span>'+esc(uiState(d.final.status))+
         ' · đã dùng '+d.final.used+'/'+d.final.maxAttempts+' lần thi</span>'+
       '<b>Trợ giảng đang xem xét</b><span>'+d.reviewWaiting+' nội dung XANH LÁ</span>'+

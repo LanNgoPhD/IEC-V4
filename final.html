@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>IEC V4.1 – Thi nói cuối</title>
-  <link rel="stylesheet" href="styles.css?v=20261006.2">
+  <link rel="stylesheet" href="styles.css?v=20261006.3">
   <script src="config.js?v=20261006.1"></script>
   <script src="common.js?v=20261005.2"></script>
 </head>
@@ -91,7 +91,7 @@ function configuredMaxRestart(){
 }
 function updateRule(max){
   finalRule.textContent=
-    'Chỉ kiểm tra các từ VÀNG còn lại · Tối đa '+Number(max||1)+' lần thi mỗi ngày';
+    'Chỉ kiểm tra các từ VÀNG còn lại · Tối đa '+(Number.isFinite(Number(max))&&Number(max)>0?Math.floor(Number(max)):'—')+' lần thi mỗi ngày';
 }
 function showIosSpeakGuide(){
   return new Promise(resolve=>{
@@ -172,7 +172,7 @@ async function startFinal(){
     await cfgPromise;
 
     const used=Number(DATA.attempts&&DATA.attempts.used||0);
-    const max=Number(DATA.attempts&&DATA.attempts.max||1);
+    const max=Number(DATA.attempts&&DATA.attempts.max||0);
     updateRule(max);
 
     if(DATA.submitted){
@@ -345,7 +345,7 @@ function handleBackend(e){
     resultSummary.textContent=resultText(d);
 
     const used=Number(d.attempts&&d.attempts.used||0);
-    const max=Number(d.attempts&&d.attempts.max||1);
+    const max=Number(d.attempts&&d.attempts.max||0);
     const remaining=Number(d.attempts&&d.attempts.remaining||0);
     const yellow=Number(d.yellow||0);
 
@@ -400,8 +400,9 @@ document.addEventListener('DOMContentLoaded',async function(){
     meta.textContent='Sẵn sàng';
     restoreClipState();
     ensureClientConfig().then(function(){
-      updateRule(Number(IEC_CONFIG.FINAL_LAST_MAX_ATTEMPTS||1));
-      meta.textContent='Sẵn sàng · tối đa '+Number(IEC_CONFIG.FINAL_LAST_MAX_ATTEMPTS||1)+' lần thi/ngày';
+      const max=Number(IEC_CONFIG&&IEC_CONFIG.FINAL_LAST_MAX_ATTEMPTS);
+      updateRule(max);
+      meta.textContent='Sẵn sàng · tối đa '+(Number.isFinite(max)&&max>0?Math.floor(max):'—')+' lần thi/ngày';
     }).catch(function(e){
       setMsg(topMsg,String(e.message||e),'err');
       startBtn.disabled=true;
