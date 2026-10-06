@@ -161,7 +161,7 @@ async function loadStudentInfo(force){
   if(document.getElementById('infoBody')){infoBody.className='msg';infoBody.textContent='Đang tải thông tin...';}
   const d=await jsonp(API_BASE+'?api=student-info&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&run='+encodeURIComponent(CTX.runId)+'&token='+encodeURIComponent(CTX.token));
   if(!d||d.ok===false)throw new Error(d&&d.error||'Không tải được thông tin');
-  STUDENT_INFO=d;renderStudentInfo(d);renderExamOverview(d);return d;
+  STUDENT_INFO=d;renderStudentInfo(d);return d;
 }
 function nextActionText(d){
   if(Number(d.counts.ACTIVE_NEW||0)>0)return 'Bạn còn nội dung TỪ MỚI chưa qua thi viết → ưu tiên CA SÁNG.';
