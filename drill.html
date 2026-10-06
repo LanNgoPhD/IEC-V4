@@ -378,9 +378,44 @@ function applyData(d){
   if(EXAM_ONLY)renderExam();
   else renderPractice();
 }
+function closeMiddayExamUi_(){
+  meta.textContent='CA THI GIỮA NGÀY đã đóng vì CA CUỐI NGÀY đã mở.';
+
+  document.querySelectorAll('.examChild').forEach(function(b){
+    b.disabled=true;
+    b.classList.remove('active');
+    b.classList.add('secondary');
+  });
+
+  writeBtn.disabled=true;
+  writeSubmit.disabled=true;
+  speakTestBtn.disabled=true;
+
+  redExamCard.classList.add('hidden');
+  yellowExamCard.classList.add('hidden');
+  writeCard.classList.add('hidden');
+  speakTestCard.classList.add('hidden');
+  examClearCard.classList.add('hidden');
+}
+
 async function loadData(){
   meta.textContent='Đang tải...';
-  applyData(await fetchData());
+
+  try{
+    applyData(await fetchData());
+  }catch(e){
+    const msg=String(e&&e.message||e||'');
+
+    if(
+      EXAM_ONLY &&
+      msg.indexOf('bài thi nói cuối đã mở')!==-1
+    ){
+      closeMiddayExamUi_();
+      return;
+    }
+
+    throw e;
+  }
 }
 function stopPracticeAudio(){
   chainRunToken++;
