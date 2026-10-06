@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>IEC V4.1 – Luyện tập / Ca giữa ngày</title>
-  <link rel="stylesheet" href="styles.css?v=20261006.3">
+  <link rel="stylesheet" href="styles.css?v=20261006.4">
   <script src="config.js?v=20261006.1"></script>
   <script src="common.js?v=20261005.2"></script>
 </head>
@@ -31,12 +31,6 @@
     <div id="meta" class="statusbar">Đang tải...</div>
 
     <div id="practiceHeaderActions" class="practice-header-actions hidden">
-      <div id="ttsBox" class="row tts-settings">
-        <label>Giọng đọc</label>
-        <select id="voicePreset" aria-label="Giọng đọc"><option>Nam – Mỹ</option><option>Nữ – Anh</option></select>
-        <label>Tốc độ</label>
-        <select id="rate" aria-label="Tốc độ đọc"></select>
-      </div>
       <button id="greenBtn" class="secondary">KẾT QUẢ XANH LÁ</button>
     </div>
   </div>
@@ -46,6 +40,7 @@
     <div id="practiceNavCard" class="card hidden">
       <h2>LUYỆN TẬP</h2>
       <div class="muted">Chọn nhóm luyện tập. Mỗi lần chỉ hiển thị nội dung đang chọn để tránh trang quá dài.</div>
+      <div id="practiceBreadcrumb" class="practice-breadcrumb">LUYỆN TẬP › LUYỆN NGHE – NÓI › NGHE TỪ</div>
 
       <div class="practice-level practice-level-parent" role="tablist" aria-label="Nhóm luyện tập">
         <button class="practiceParent active" data-group="listen">LUYỆN NGHE – NÓI</button>
@@ -68,10 +63,18 @@
     <div id="wordPanel" class="card practiceContent hidden">
       <div class="section-head">
         <div>
-          <h2>NGHE TỪ · TỪ MỚI + ĐỎ CŨ</h2>
+          <h2>NGHE TỪ: TỪ MỚI + ĐỎ CŨ</h2>
           <div class="muted">Nghe, di chuyển trong danh sách và luyện nói từng từ/cụm từ.</div>
         </div>
         <div id="wordProgress" class="practice-progress"></div>
+      </div>
+      <div id="wordTtsSlot" class="practice-settings-slot">
+        <div id="ttsBox" class="row tts-settings practice-inline-settings">
+          <label>Giọng đọc</label>
+          <select id="voicePreset" aria-label="Giọng đọc"><option>Nam – Mỹ</option><option>Nữ – Anh</option></select>
+          <label>Tốc độ</label>
+          <select id="rate" aria-label="Tốc độ đọc"></select>
+        </div>
       </div>
       <div id="wordPlayer" class="practice-player">
         <div id="wordTag" class="tag"></div>
@@ -96,11 +99,12 @@
     <div id="chainPanel" class="card practiceContent hidden">
       <div class="section-head">
         <div>
-          <h2>NGHE CỤM TỪ · TỪ MỚI + ĐỎ CŨ</h2>
+          <h2>NGHE CỤM TỪ: TỪ MỚI + ĐỎ CŨ</h2>
           <div id="chainRule" class="muted"></div>
         </div>
         <div id="chainProgress" class="practice-progress"></div>
       </div>
+      <div id="chainTtsSlot" class="practice-settings-slot"></div>
       <div id="chainPlayer" class="practice-player">
         <div id="chainTag" class="tag"></div>
         <div id="chainVn" class="vn">---</div>
@@ -126,7 +130,7 @@
     <div id="vietwritePanel" class="card practiceContent hidden">
       <div class="section-head">
         <div>
-          <h2>LUYỆN VIẾT · VIỆT → ANH</h2>
+          <h2>LUYỆN VIẾT: VIỆT → ANH</h2>
           <div class="muted">Nhìn nghĩa tiếng Việt và tự viết tiếng Anh. Không có nút hiện đáp án.</div>
         </div>
         <div id="vietwriteProgress" class="practice-progress"></div>
@@ -144,14 +148,14 @@
     <div id="dictationPanel" class="card practiceContent hidden">
       <div class="section-head">
         <div>
-          <h2>LUYỆN VIẾT · CHÍNH TẢ</h2>
+          <h2>LUYỆN VIẾT: CHÍNH TẢ</h2>
           <div class="muted">Nghe tiếng Anh → viết đúng tiếng Anh → nếu đúng mới chọn nghĩa tiếng Việt.</div>
         </div>
       </div>
       <div id="dictationPrompt" class="msg">Bấm BẮT ĐẦU để luyện chính tả.</div>
       <div class="row practice-action-row">
         <button id="dictationStart">BẮT ĐẦU</button>
-        <button id="dictationListen" class="secondary" disabled>🔊 NGHE LẠI</button>
+        <div class="dictation-replay-box"><button id="dictationListen" class="secondary" disabled>🔊 NGHE LẠI</button><small id="dictationReplayInfo">Còn 0 lần nghe lại</small></div>
       </div>
       <input id="dictationInput" class="hidden" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Viết từ/cụm tiếng Anh vừa nghe">
       <button id="dictationCheck" class="hidden">KIỂM TRA VIẾT</button>
@@ -178,34 +182,45 @@
 
   <!-- EXAM ONLY -->
   <div id="examViewLocal" class="hidden">
+    <div id="examNavCard" class="card">
+      <div class="exam-breadcrumb">CA THI › CA THI GIỮA NGÀY</div>
+      <h2>CA THI GIỮA NGÀY</h2>
+      <div class="muted">Cải thiện nội dung chưa đạt và hoàn thành sớm nội dung đủ điều kiện.</div>
+      <div id="examSubNav" class="exam-child-nav">
+        <button class="examChild active" data-exam-panel="write">THI VIẾT: CẢI THIỆN ĐỎ<small>ĐỎ → VÀNG</small></button>
+        <button class="examChild secondary" data-exam-panel="speak">THI NÓI: HOÀN THÀNH SỚM XANH BIỂN<small>VÀNG → XANH BIỂN</small></button>
+      </div>
+    </div>
+
     <div id="redExamCard" class="card hidden">
-      <h2>SỬA ĐỎ · KIỂM TRA VIẾT</h2>
-      <div class="muted">Không hiện tiếng Anh/phiên âm. Viết đúng → VÀNG; viết chưa đúng vẫn ĐỎ.</div>
-      <div id="redExamSummary" class="statusbar"></div>
-      <button id="writeBtn">BẮT ĐẦU KIỂM TRA VIẾT ĐỎ</button>
+      <h2>THI VIẾT: CẢI THIỆN ĐỎ</h2>
+      <div class="muted">Thi lại nội dung ĐỎ để chuyển thành VÀNG. Không hiện tiếng Anh/phiên âm.</div>
+      <div id="redExamSummary" class="statusbar centered-status"></div>
+      <button id="writeBtn">BẮT ĐẦU THI VIẾT</button>
     </div>
 
     <div id="writeCard" class="card hidden">
-      <h2>KIỂM TRA VIẾT ĐỎ</h2>
+      <h2>THI VIẾT: CẢI THIỆN ĐỎ</h2>
+      <div id="writeAttemptInfo" class="statusbar centered-status"></div>
       <div id="writeQuestions"></div>
-      <button id="writeSubmit">NỘP KIỂM TRA VIẾT</button>
+      <button id="writeSubmit">NỘP BÀI THI VIẾT</button>
       <div id="writeMsg" class="msg"></div>
     </div>
 
     <div id="yellowExamCard" class="card hidden">
-      <h2>THI NÓI VÀNG</h2>
-      <div class="muted">Không nhìn tiếng Anh/phiên âm. Đạt → XANH BIỂN; chưa đạt vẫn VÀNG.</div>
-      <div id="attemptInfo" class="statusbar"></div>
+      <h2>THI NÓI: HOÀN THÀNH SỚM XANH BIỂN</h2>
+      <div class="muted">Thi các nội dung VÀNG để hoàn thành sớm XANH BIỂN. Không nhìn tiếng Anh/phiên âm.</div>
+      <div id="attemptInfo" class="statusbar centered-status"></div>
       <button id="speakTestBtn">BẮT ĐẦU THI NÓI</button>
       <div id="speakMsg" class="msg"></div>
     </div>
 
     <div id="speakTestCard" class="card hidden">
-      <h2>THI NÓI VÀNG</h2>
-      <div id="speakProgress" class="tag"></div>
+      <h2>THI NÓI: HOÀN THÀNH SỚM XANH BIỂN</h2>
+      <div id="speakProgress" class="tag centered-status"></div>
       <div id="speakPrompt" class="bigword">---</div>
       <div id="speakTimer" class="timer"></div>
-      <div id="speakStatus" class="statusbar"></div>
+      <div id="speakStatus" class="statusbar centered-status"></div>
       <div id="speakResult" class="speech-result"></div>
       <div class="info-grid">
         <b>Máy nghe được</b><span id="speakHeard">---</span>
@@ -214,8 +229,8 @@
     </div>
 
     <div id="examClearCard" class="card hidden">
-      <h2>CA GIỮA NGÀY ĐÃ XỬ LÝ XONG</h2>
-      <div class="msg ok">Không còn ĐỎ cần sửa viết hoặc VÀNG cần thi nói.</div>
+      <h2>CA THI GIỮA NGÀY ĐÃ XỬ LÝ XONG</h2>
+      <div class="msg ok">Không còn ĐỎ cần thi viết hoặc VÀNG cần thi nói.</div>
     </div>
   </div>
 
@@ -229,10 +244,10 @@ let CTX,DATA,activePost='';
 const EXAM_ONLY=qp('examOnly')==='1';
 const rateSelect=document.getElementById('rate');
 const voicePresetSelect=document.getElementById('voicePreset');
-let dictationCurrent=null;
+let dictationCurrent=null,dictationReplayRemaining=0;
 let wordIndex=0,writeIndex=0,writeOrder=[];
 let chainItems=[],chainIndex=0,chainRunToken=0,chainPlaying=false,chainCompleted=false;
-let activePracticePanel='word';
+let activePracticePanel='word',activeExamPanel='write';
 
 function inheritClientConfig(){
   try{
@@ -263,6 +278,15 @@ function configuredMaxRestart(){
   const v=Number(IEC_CONFIG&&IEC_CONFIG.MAX_RESTART);
   return Number.isFinite(v)?Math.max(0,Math.floor(v)):1;
 }
+function configuredDictationReplay(){
+  const v=Number(IEC_CONFIG&&IEC_CONFIG.DICTATION_REPLAY_MAX);
+  return Number.isFinite(v)?Math.max(0,Math.min(10,Math.floor(v))):3;
+}
+function updateDictationReplayUi(){
+  const n=Math.max(0,Number(dictationReplayRemaining||0));
+  dictationReplayInfo.textContent='Còn '+n+' lần nghe lại';
+  dictationListen.disabled=!dictationCurrent||n<=0;
+}
 function setupRates(){
   const rates=IEC_CONFIG.TTS_RATES&&IEC_CONFIG.TTS_RATES.length?IEC_CONFIG.TTS_RATES:[.5,.7,.85,1];
   rateSelect.innerHTML='';
@@ -290,13 +314,14 @@ function allPracticeItems(){
 }
 function practiceSourceLabel(it){
   const id=it&&it.contentId;
-  if((DATA&&DATA.redItems||[]).some(x=>x&&x.contentId===id))return 'ĐỎ CŨ';
-  return 'TỪ MỚI';
+  // TỪ MỚI hôm nay giữ nhãn TỪ MỚI ngay cả khi sau thi viết đang ở trạng thái ĐỎ.
+  if((DATA&&DATA.newItems||[]).some(x=>x&&x.contentId===id))return 'TỪ MỚI';
+  return 'ĐỎ CŨ';
 }
 function setPageHeader(){
   if(EXAM_ONLY){
-    pageTitle.textContent='CA GIỮA NGÀY';
-    pageRule.textContent='Cải thiện ĐỎ thành VÀNG bằng bài thi viết và VÀNG thành XANH BIỂN bằng bài thi nói.';
+    pageTitle.textContent='CA THI GIỮA NGÀY';
+    pageRule.textContent='THI VIẾT: CẢI THIỆN ĐỎ · THI NÓI: HOÀN THÀNH SỚM XANH BIỂN.';
     practiceHeaderActions.classList.add('hidden');
     practiceView.classList.add('hidden');
     examViewLocal.classList.remove('hidden');
@@ -541,16 +566,12 @@ function nextVietWrite(){
 }
 function updatePracticeNav(panel){
   const group=(panel==='word'||panel==='chain')?'listen':'write';
-  document.querySelectorAll('.practiceParent').forEach(function(b){
-    const on=b.dataset.group===group;
-    b.classList.toggle('active',on);b.classList.toggle('secondary',!on);
-  });
-  listenSubNav.classList.toggle('hidden',group!=='listen');
-  writeSubNav.classList.toggle('hidden',group!=='write');
-  document.querySelectorAll('.practiceChild').forEach(function(b){
-    const on=b.dataset.panel===panel;
-    b.classList.toggle('active',on);b.classList.toggle('secondary',!on);
-  });
+  const parentLabel=group==='listen'?'LUYỆN NGHE – NÓI':'LUYỆN VIẾT';
+  const childLabel={word:'NGHE TỪ',chain:'NGHE CỤM TỪ',vietwrite:'VIỆT → ANH',dictation:'CHÍNH TẢ'}[panel]||'';
+  practiceBreadcrumb.textContent='LUYỆN TẬP › '+parentLabel+' › '+childLabel;
+  document.querySelectorAll('.practiceParent').forEach(function(b){const on=b.dataset.group===group;b.classList.toggle('active',on);b.classList.toggle('secondary',!on);});
+  listenSubNav.classList.toggle('hidden',group!=='listen');writeSubNav.classList.toggle('hidden',group!=='write');
+  document.querySelectorAll('.practiceChild').forEach(function(b){const on=b.dataset.panel===panel;b.classList.toggle('active',on);b.classList.toggle('secondary',!on);});
 }
 function selectPracticePanel(panel,focus){
   const allowed=['word','chain','vietwrite','dictation'];
@@ -561,10 +582,11 @@ function selectPracticePanel(panel,focus){
   document.querySelectorAll('.practiceContent').forEach(function(x){x.classList.add('hidden');});
   const target=document.getElementById(panel+'Panel');
   if(target)target.classList.remove('hidden');
-  ttsBox.classList.toggle('hidden',panel==='vietwrite');
-  if(panel==='word')renderWordPanel();
-  if(panel==='chain')renderChainPanel();
+  if(panel==='word'){wordTtsSlot.appendChild(ttsBox);ttsBox.classList.remove('hidden');renderWordPanel();}
+  else if(panel==='chain'){chainTtsSlot.appendChild(ttsBox);ttsBox.classList.remove('hidden');renderChainPanel();}
+  else{ttsBox.classList.add('hidden');}
   if(panel==='vietwrite')renderVietWritePanel();
+  if(panel==='dictation')updateDictationReplayUi();
   if(focus&&target)target.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function bindPracticeTools(){
@@ -597,30 +619,49 @@ function bindPracticeTools(){
   vietwriteInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!vietwriteCheck.disabled)checkVietWrite();});
 
   dictationStart.onclick=startDictation;
-  dictationListen.onclick=function(){if(dictationCurrent)ttsSpeak(dictationCurrent.english,selectedTtsRate(),1);};
+  dictationListen.onclick=async function(){if(!dictationCurrent||dictationReplayRemaining<=0)return;dictationReplayRemaining--;updateDictationReplayUi();try{await ttsSpeak(dictationCurrent.english,selectedTtsRate(),1);}finally{updateDictationReplayUi();}};
   dictationCheck.onclick=checkDictation;
   dictationInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!dictationCheck.classList.contains('hidden'))checkDictation();});
 }
-function renderExam(){
-  writeCard.classList.add('hidden');
-  speakTestCard.classList.add('hidden');
-
-  const red=DATA.redItems||[],yellow=DATA.yellowItems||[];
-  redExamCard.classList.toggle('hidden',!red.length);
-  redExamSummary.textContent=red.length+' nội dung ĐỎ cần sửa viết';
-
-  yellowExamCard.classList.toggle('hidden',!yellow.length);
-  attemptInfo.textContent=
-    'Đã dùng '+DATA.speakAttempts.used+'/'+DATA.speakAttempts.max+
-    ' lần thi nói · còn '+DATA.speakAttempts.remaining+' lần';
-  speakTestBtn.disabled=!yellow.length||DATA.speakAttempts.remaining<=0;
-
-  examClearCard.classList.toggle('hidden',red.length+yellow.length>0);
+function updateExamChildNav(){
+  document.querySelectorAll('.examChild').forEach(function(b){const on=b.dataset.examPanel===activeExamPanel;b.classList.toggle('active',on);b.classList.toggle('secondary',!on);});
 }
+function selectExamPanel(panel,focus){
+  activeExamPanel=panel==='speak'?'speak':'write';
+  stopTts();
+  writeCard.classList.add('hidden');speakTestCard.classList.add('hidden');
+  redExamCard.classList.add('hidden');yellowExamCard.classList.add('hidden');examClearCard.classList.add('hidden');
+  updateExamChildNav();
+  const red=DATA.redItems||[],yellow=DATA.yellowItems||[];
+  if(!red.length&&!yellow.length){examClearCard.classList.remove('hidden');return;}
+  if(activeExamPanel==='write'){
+    redExamCard.classList.toggle('hidden',!red.length);
+    if(!red.length&&yellow.length){activeExamPanel='speak';updateExamChildNav();yellowExamCard.classList.remove('hidden');}
+  }else{
+    yellowExamCard.classList.toggle('hidden',!yellow.length);
+    if(!yellow.length&&red.length){activeExamPanel='write';updateExamChildNav();redExamCard.classList.remove('hidden');}
+  }
+  if(focus){const target=activeExamPanel==='write'?redExamCard:yellowExamCard;target.scrollIntoView({behavior:'smooth',block:'start'});}
+}
+function renderExam(){
+  writeCard.classList.add('hidden');speakTestCard.classList.add('hidden');
+  const red=DATA.redItems||[],yellow=DATA.yellowItems||[],wa=DATA.writeAttempts||{used:0,max:0,remaining:0},sa=DATA.speakAttempts||{used:0,max:0,remaining:0};
+  redExamSummary.textContent=red.length+' nội dung ĐỎ cần cải thiện · Đã thi '+wa.used+'/'+wa.max+' lần · còn '+wa.remaining+' lần';
+  writeAttemptInfo.textContent=red.length+' nội dung ĐỎ · Đã thi '+wa.used+'/'+wa.max+' lần · còn '+wa.remaining+' lần';
+  writeBtn.disabled=!red.length||wa.remaining<=0;
+  attemptInfo.textContent=yellow.length+' nội dung VÀNG · Đã thi '+sa.used+'/'+sa.max+' lần thi nói · còn '+sa.remaining+' lần';
+  speakTestBtn.disabled=!yellow.length||sa.remaining<=0;
+  document.querySelectorAll('.examChild').forEach(function(b){if(b.dataset.examPanel==='write')b.disabled=!red.length||wa.remaining<=0;if(b.dataset.examPanel==='speak')b.disabled=!yellow.length||sa.remaining<=0;});
+  if(activeExamPanel==='write'&&!red.length&&yellow.length)activeExamPanel='speak';
+  if(activeExamPanel==='speak'&&!yellow.length&&red.length)activeExamPanel='write';
+  selectExamPanel(activeExamPanel,false);
+}
+
 function startWrite(){
   stopTts();
-  redExamCard.classList.add('hidden');
+  redExamCard.classList.add('hidden');yellowExamCard.classList.add('hidden');
   writeCard.classList.remove('hidden');
+  const wa=DATA.writeAttempts||{used:0,max:0,remaining:0};writeAttemptInfo.textContent=(DATA.redItems||[]).length+' nội dung ĐỎ · Đã thi '+wa.used+'/'+wa.max+' lần · còn '+wa.remaining+' lần';
   writeQuestions.innerHTML='';
 
   (DATA.redItems||[]).forEach(function(it,i){
@@ -664,7 +705,8 @@ function startDictation(){
   dictationInput.classList.remove('hidden');
   dictationCheck.disabled=false;
   dictationCheck.classList.remove('hidden');
-  dictationListen.disabled=false;
+  dictationReplayRemaining=configuredDictationReplay();
+  updateDictationReplayUi();
   dictationStart.textContent='CÂU MỚI';
   dictationMeaning.classList.add('hidden');
   dictationMeaning.innerHTML='';
@@ -795,6 +837,7 @@ async function startSpeakTest(){
 
     yellowExamCard.classList.add('hidden');
     redExamCard.classList.add('hidden');
+    writeCard.classList.add('hidden');
     speakTestCard.classList.remove('hidden');
 
     const results=await runOfficialSpeechTest(
@@ -862,7 +905,7 @@ function handleMessage(e){
     }
     setMsg(
       writeMsg,
-      'Đã chuyển '+Number(d.promoted||0)+' nội dung ĐỎ → VÀNG · Còn ĐỎ: '+Number(d.remaining||0)+'.',
+      'Đã chuyển '+Number(d.promoted||0)+' nội dung ĐỎ → VÀNG · Còn ĐỎ: '+Number(d.remaining||0)+(d.attempts?' · Đã thi '+d.attempts.used+'/'+d.attempts.max+' lần.':'.'),
       'ok'
     );
     setTimeout(()=>loadData().catch(err=>setMsg(writeMsg,'LỖI: '+String(err.message||err),'err')),350);
@@ -922,6 +965,7 @@ document.addEventListener('DOMContentLoaded',async function(){
     bindPracticeTools();
     greenBtn.onclick=toggleGreen;
   }else{
+    document.querySelectorAll('.examChild').forEach(function(b){b.onclick=function(){selectExamPanel(b.dataset.examPanel,true);};});
     writeBtn.onclick=startWrite;
     writeSubmit.onclick=submitWrite;
     speakTestBtn.onclick=startSpeakTest;

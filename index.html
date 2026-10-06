@@ -7,14 +7,14 @@
   <link rel="preconnect" href="https://script.google.com">
   <link rel="preconnect" href="https://script.googleusercontent.com">
   <title>IEC V4.1</title>
-  <link rel="stylesheet" href="styles.css?v=20261006.3">
+  <link rel="stylesheet" href="styles.css?v=20261006.4">
   <script src="config.js?v=20261006.1"></script>
   <script src="common.js?v=20261005.2"></script>
 </head>
 <body>
 <div class="portal-shell">
   <header class="portal-header">
-    <div>
+    <div class="portal-brand">
       <h1>IEC V4.1</h1>
       <div id="portalMeta" class="sub">Đang kết nối...</div>
     </div>
@@ -30,30 +30,34 @@
 
   <main>
     <section id="infoView" class="portal-view">
-      <div class="card">
-        <h2>THÔNG TIN</h2>
-        <div id="infoBody" class="msg">Đang tải thông tin...</div>
-      </div>
+      <div id="infoBody" class="msg">Đang tải thông tin...</div>
     </section>
 
     <section id="examView" class="portal-view hidden">
-      <div class="card">
+      <div class="card page-intro">
         <h2>CA THI</h2>
-        <div id="examAttempts" class="sub">Đang tải giới hạn số lần thi...</div>
-        <div class="exam-grid">
-          <button onclick="showFrame('morning.html','exam')">
-            <b>CA SÁNG</b>
-            <span>Thi viết TỪ MỚI + ĐỎ CŨ</span>
-          </button>
-          <button onclick="showFrame('drill.html?examOnly=1','exam')">
-            <b>CA GIỮA NGÀY</b>
-            <span>Cải thiện ĐỎ thành VÀNG bằng bài thi viết và VÀNG thành XANH BIỂN bằng bài thi nói</span>
-          </button>
-          <button onclick="showFrame('final.html','exam')">
-            <b>CA CUỐI NGÀY</b>
-            <span>Thi nói các từ VÀNG còn lại</span>
-          </button>
-        </div>
+        <div class="sub">Bài thi chính thức · kết quả làm thay đổi trạng thái học tập và được tính vào số lần thi trong ngày.</div>
+        <div id="examAttempts" class="statusbar centered-status">Đang tải số lần thi...</div>
+      </div>
+      <div class="exam-grid exam-parent-grid">
+        <button class="exam-parent-card" onclick="showFrame('morning.html','exam')">
+          <b>CA SÁNG</b>
+          <span>Thi viết TỪ MỚI + ĐỎ CŨ</span>
+          <em id="examMorningMeta">Đang tải...</em>
+          <i class="mini-progress"><u id="examMorningBar"></u></i>
+        </button>
+        <button class="exam-parent-card" onclick="showFrame('drill.html?examOnly=1','exam')">
+          <b>CA THI GIỮA NGÀY</b>
+          <span>ĐỎ → VÀNG bằng thi viết · VÀNG → XANH BIỂN bằng thi nói</span>
+          <em id="examDrillMeta">Đang tải...</em>
+          <i class="mini-progress"><u id="examDrillBar"></u></i>
+        </button>
+        <button class="exam-parent-card" onclick="showFrame('final.html','exam')">
+          <b>CA CUỐI NGÀY</b>
+          <span>Thi nói các nội dung VÀNG còn lại</span>
+          <em id="examFinalMeta">Đang tải...</em>
+          <i class="mini-progress"><u id="examFinalBar"></u></i>
+        </button>
       </div>
     </section>
 
@@ -62,10 +66,7 @@
     </section>
 
     <section id="resultView" class="portal-view hidden">
-      <div class="card">
-        <h2>KẾT QUẢ</h2>
-        <div id="resultBody" class="msg">Đang tải...</div>
-      </div>
+      <div id="resultBody" class="msg">Đang tải...</div>
     </section>
   </main>
 
@@ -75,7 +76,7 @@
 <script>
 const ROLE=(qp('role')||'student').toLowerCase();
 const VIEW=(qp('view')||'info').toLowerCase();
-const UI_BUILD='20261006.3';
+const UI_BUILD='20261006.4';
 let CTX=null,STUDENT_INFO=null;
 window.IEC_V4_RUNTIME_CONFIG=null;
 window.IEC_V4_CONFIG_PROMISE=null;
@@ -84,156 +85,149 @@ window.IEC_V4_ENSURE_CONFIG=function(){
   if(window.IEC_V4_CONFIG_PROMISE)return window.IEC_V4_CONFIG_PROMISE;
   window.IEC_V4_CONFIG_PROMISE=loadClientConfig().then(function(cfg){
     window.IEC_V4_RUNTIME_CONFIG=cfg;
-    updateExamAttempts();
     return cfg;
-  }).catch(function(err){
-    window.IEC_V4_CONFIG_PROMISE=null;
-    throw err;
-  });
+  }).catch(function(err){window.IEC_V4_CONFIG_PROMISE=null;throw err;});
   return window.IEC_V4_CONFIG_PROMISE;
 };
 
 function copyParams(url){
   const u=new URL(url,location.href);
-  new URLSearchParams(location.search).forEach(function(v,k){
-    if(!['view','exam','role','embed'].includes(k))u.searchParams.set(k,v);
-  });
+  new URLSearchParams(location.search).forEach(function(v,k){if(!['view','exam','role','embed'].includes(k))u.searchParams.set(k,v);});
   u.searchParams.set('embed','1');
   return u.toString();
 }
-function addTab(id,label,fn){
-  const b=document.createElement('button');
-  b.textContent=label;b.dataset.id=id;b.onclick=fn;nav.appendChild(b);return b;
-}
+function addTab(id,label,fn){const b=document.createElement('button');b.textContent=label;b.dataset.id=id;b.onclick=fn;nav.appendChild(b);return b;}
 function showView(id){
   document.querySelectorAll('.portal-view').forEach(x=>x.classList.add('hidden'));
   document.getElementById(id).classList.remove('hidden');
-  document.querySelectorAll('#nav button').forEach(
-    x=>x.classList.toggle('active',x.dataset.id===id.replace('View',''))
-  );
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id===id.replace('View','')));
 }
 function showFrame(page,tab){
   showView('frameView');
-  document.querySelectorAll('#nav button').forEach(
-    x=>x.classList.toggle('active',x.dataset.id===tab)
-  );
-  const u=new URL(copyParams(page));
-  u.searchParams.set('_v',UI_BUILD);
-  const next=u.toString();
-  if(portalFrame.dataset.src!==next){
-    portalFrame.dataset.src=next;
-    portalFrame.src=next;
-  }
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id===tab));
+  const u=new URL(copyParams(page));u.searchParams.set('_v',UI_BUILD);const next=u.toString();
+  if(portalFrame.dataset.src!==next){portalFrame.dataset.src=next;portalFrame.src=next;}
 }
-function esc(x){
-  return String(x==null?'':x).replace(/[&<>"]/g,function(c){
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
-  });
-}
+function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function uiState(s){
   const k=String(s||'').toUpperCase();
-  const m={
-    RED:'ĐỎ',YELLOW:'VÀNG',BLUE:'XANH BIỂN',GREEN:'XANH LÁ',
-    DONE:'ĐÃ XONG',PENDING:'CHỜ',COMPLETED:'ĐÃ HOÀN THÀNH',
-    RETRY:'CÒN ĐỎ – CÓ THỂ THI LẠI',MAX_ATTEMPTS:'ĐÃ HẾT LẦN THI SÁNG',
-    AWAIT_CLIP:'CHỜ VIDEO',CLIP_MISSING:'THIẾU VIDEO',MISSED:'BỎ LỠ',
-    STARTED:'ĐANG LÀM',NOT_STARTED:'CHƯA BẮT ĐẦU','N/A':'—'
-  };
+  const m={RED:'ĐỎ',YELLOW:'VÀNG',BLUE:'XANH BIỂN',GREEN:'XANH LÁ',DONE:'ĐÃ HOÀN THÀNH',PENDING:'CHỜ',COMPLETED:'ĐÃ HOÀN THÀNH',RETRY:'CÒN ĐỎ – CÓ THỂ THI LẠI',MAX_ATTEMPTS:'ĐÃ HẾT LẦN THI',AWAIT_CLIP:'CHỜ VIDEO',CLIP_MISSING:'THIẾU VIDEO',MISSED:'BỎ LỠ',STARTED:'ĐANG THI',NOT_STARTED:'CHƯA BẮT ĐẦU','N/A':'—'};
   return m[k]||viState(s);
 }
-function configCount(key){
-  const v=Number(IEC_CONFIG&&IEC_CONFIG[key]);
-  return Number.isFinite(v)&&v>=0?Math.floor(v):'—';
-}
-function updateExamAttempts(){
-  if(!IEC_CONFIG)return;
-  examAttempts.textContent=
-    'CA SÁNG: '+configCount('MORNING_MAX_ATTEMPTS')+' lần thi · '+
-    'CA GIỮA NGÀY: '+configCount('DRILL_SPEAK_TEST_MAX_PER_DAY')+' lần thi · '+
-    'CA CUỐI NGÀY: '+configCount('FINAL_LAST_MAX_ATTEMPTS')+' lần thi';
-}
+function clamp(n,a,b){n=Number(n||0);return Math.max(a,Math.min(b,n));}
+function percent(a,b){a=Number(a||0);b=Number(b||0);return b>0?Math.round(a*100/b):0;}
+function formatDateVN(s){const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?m[3]+'/'+m[2]+'/'+m[1]:(s||'—');}
+function attemptsText(used,max,label){used=Number(used||0);max=Number(max||0);return 'Đã thi '+used+'/'+max+' '+(label||'lần')+' · còn '+Math.max(0,max-used)+' lần';}
+function setBar(el,used,max){if(el)el.style.width=clamp(percent(used,max),0,100)+'%';}
+
 async function loadStudentInfo(force){
   if(STUDENT_INFO&&!force){renderStudentInfo(STUDENT_INFO);return STUDENT_INFO;}
-  infoBody.className='msg';infoBody.textContent='Đang tải thông tin...';
-  const d=await jsonp(
-    API_BASE+'?api=student-info&class='+encodeURIComponent(CTX.classId)+
-    '&student='+encodeURIComponent(CTX.studentId)+
-    '&run='+encodeURIComponent(CTX.runId)+
-    '&token='+encodeURIComponent(CTX.token)
-  );
+  if(document.getElementById('infoBody')){infoBody.className='msg';infoBody.textContent='Đang tải thông tin...';}
+  const d=await jsonp(API_BASE+'?api=student-info&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&run='+encodeURIComponent(CTX.runId)+'&token='+encodeURIComponent(CTX.token));
   if(!d||d.ok===false)throw new Error(d&&d.error||'Không tải được thông tin');
-  STUDENT_INFO=d;renderStudentInfo(d);return d;
+  STUDENT_INFO=d;renderStudentInfo(d);renderExamOverview(d);return d;
+}
+function nextActionText(d){
+  if(Number(d.counts.ACTIVE_NEW||0)>0)return 'Bạn còn nội dung TỪ MỚI chưa qua thi viết → ưu tiên CA SÁNG.';
+  if(Number(d.counts.RED||0)>0)return 'Bạn còn '+d.counts.RED+' ĐỎ → vào LUYỆN TẬP → LUYỆN VIẾT trước khi THI VIẾT: CẢI THIỆN ĐỎ.';
+  if(Number(d.counts.YELLOW||0)>0)return 'Bạn còn '+d.counts.YELLOW+' VÀNG → luyện nghe–nói, sau đó có thể THI NÓI để hoàn thành XANH BIỂN.';
+  if(Number(d.reviewWaiting||0)>0)return 'Bạn đã hoàn tất phần cần làm. Hiện có '+d.reviewWaiting+' nội dung XANH LÁ đang chờ trợ giảng xét duyệt.';
+  return 'Không còn nội dung cần xử lý ở thời điểm hiện tại.';
 }
 function renderStudentInfo(d){
-  portalMeta.textContent=(d.student.fullName||d.student.studentId)+' · Ngày '+d.run.programDay+' · IEC '+d.version;
-  infoBody.className='';
+  const c=d.course||{},t=d.today||{},totalDays=Number(c.totalDays||0),day=Number(c.currentDay||d.run.programDay||0),timePct=totalDays?percent(day,totalDays):0;
+  portalMeta.textContent=(d.student.fullName||d.student.studentId)+' · '+(c.className||CTX.classId)+' · Ngày '+d.run.programDay+' · IEC '+d.version;
+  const totalState=Number(d.counts.RED||0)+Number(d.counts.YELLOW||0)+Number(d.counts.GREEN||0)+Number(d.counts.BLUE||0);
+  const rPct=totalState?percent(d.counts.RED,totalState):0,yPct=totalState?percent(d.counts.YELLOW,totalState):0,gPct=totalState?percent(d.counts.GREEN,totalState):0,bPct=totalState?Math.max(0,100-rPct-yPct-gPct):0;
+  const todayPct=percent(t.blue,t.assigned);
+  const teacher=(c.teachers||[]).join(', ')||'Chưa cấu hình';
+  const ta=(c.tas||[]).join(', ')||'Chưa cấu hình';
+
+  infoBody.className='dashboard-stack';
   infoBody.innerHTML=
-    '<div class="kpis">'+
-      '<div class="kpi"><span>ĐỎ – Chưa đạt thi viết</span><b>'+d.counts.RED+'</b></div>'+
-      '<div class="kpi yellowKpi"><span>VÀNG – Chưa đạt thi nói</span><b>'+d.counts.YELLOW+'</b></div>'+
-      '<div class="kpi"><span>XANH LÁ – Chờ trợ giảng xét duyệt</span><b>'+d.counts.GREEN+'</b></div>'+
-      '<div class="kpi"><span>XANH BIỂN – Hoàn thành</span><b>'+d.counts.BLUE+'</b></div>'+
-    '</div>'+
-    '<div class="info-grid portal-info">'+
-      '<b>CA SÁNG</b><span>'+esc(uiState(d.morning.status))+
-        ' · đã dùng '+d.morning.used+'/'+d.morning.maxAttempts+' lần thi</span>'+
-      '<b>CA GIỮA NGÀY</b><span>Đã dùng '+d.drillSpeak.used+'/'+d.drillSpeak.max+' lần thi</span>'+
-      '<b>CA CUỐI NGÀY</b><span>'+esc(uiState(d.final.status))+
-        ' · đã dùng '+d.final.used+'/'+d.final.maxAttempts+' lần thi</span>'+
-      '<b>Trợ giảng đang xem xét</b><span>'+d.reviewWaiting+' nội dung XANH LÁ</span>'+
-    '</div>';
+    '<section class="card info-course-card">'+
+      '<div class="course-ring" style="--p:'+clamp(timePct,0,100)+'"><div><b>'+(totalDays?day+'/'+totalDays:'Ngày '+day)+'</b><span>'+(totalDays?timePct+'% thời gian':'Tiến độ khóa')+'</span></div></div>'+
+      '<div class="course-main"><h2>TIẾN ĐỘ KHÓA HỌC</h2><div class="sub">'+(totalDays?'Còn '+Math.max(0,totalDays-day)+' ngày học':'Chưa cấu hình tổng số ngày')+(c.plannedEndDate?' · Kết thúc dự kiến '+formatDateVN(c.plannedEndDate):'')+'</div>'+
+      '<div class="course-identity"><span><b>Lớp</b>'+esc(c.className||CTX.classId)+'</span><span><b>Sinh viên</b>'+esc(d.student.fullName||d.student.studentId)+'</span><span><b>Giảng viên</b>'+esc(teacher)+'</span><span><b>Trợ giảng</b>'+esc(ta)+'</span></div></div>'+
+    '</section>'+
+    '<section class="card next-action-card"><h2>VIỆC CẦN LÀM TIẾP THEO</h2><div class="next-action-text">'+esc(nextActionText(d))+'</div></section>'+
+    '<section class="card"><h2>TRẠNG THÁI HỌC TẬP HIỆN TẠI</h2><div class="state-stack"><span class="seg red" style="width:'+rPct+'%"></span><span class="seg yellow" style="width:'+yPct+'%"></span><span class="seg green" style="width:'+gPct+'%"></span><span class="seg blue" style="width:'+bPct+'%"></span></div>'+ 
+      '<div class="status-kpis"><div class="status-kpi red"><span>ĐỎ – Chưa đạt thi viết</span><b>'+d.counts.RED+'</b></div><div class="status-kpi yellow"><span>VÀNG – Chưa đạt thi nói</span><b>'+d.counts.YELLOW+'</b></div><div class="status-kpi green"><span>XANH LÁ – Chờ trợ giảng xét duyệt</span><b>'+d.counts.GREEN+'</b></div><div class="status-kpi blue"><span>XANH BIỂN – Đã hoàn thành</span><b>'+d.counts.BLUE+'</b></div></div>'+ 
+      '<div class="today-completion"><div class="mini-donut" style="--p:'+todayPct+'"><b>'+Number(t.blue||0)+'/'+Number(t.assigned||0)+'</b><span>'+todayPct+'%</span></div><div><strong>HOÀN THÀNH HÔM NAY</strong><p>'+(t.assigned?('Còn '+Math.max(0,Number(t.assigned)-Number(t.blue||0))+' nội dung trong nhóm được giao hôm nay.'):'Chưa có dữ liệu phân công của ngày hiện tại.')+'</p></div></div>'+ 
+    '</section>'+
+    '<section class="card"><h2>CÁC CA HÔM NAY</h2><div class="session-cards">'+
+      sessionCardHtml('CA SÁNG','THI VIẾT',d.morning.used,d.morning.maxAttempts,uiState(d.morning.status))+
+      middaySessionCardHtml(d)+
+      sessionCardHtml('CA CUỐI NGÀY','THI NÓI',d.final.used,d.final.maxAttempts,uiState(d.final.status))+
+    '</div></section>'+
+    '<section class="card ta-wait-card"><h2>TRỢ GIẢNG ĐANG ĐÁNH GIÁ</h2><div class="ta-wait-number">'+Number(d.reviewWaiting||0)+' <span>XANH LÁ</span></div><div class="sub">'+(d.reviewWaiting?'Đã nộp và đang chờ xét duyệt. ĐẠT → XANH BIỂN · CHƯA ĐẠT → VÀNG.':'Không có nội dung đang chờ trợ giảng.')+'</div></section>'+
+    '<section class="card"><h2>LỊCH HÔM NAY</h2><div class="day-timeline"><div><b>CA SÁNG</b><span>Từ '+esc(d.run.morningOpen||'—')+'</span></div><div><b>CA THI GIỮA NGÀY</b><span>Sau CA SÁNG → trước '+esc(d.run.finalOpen||'—')+'</span></div><div><b>CA CUỐI NGÀY</b><span>Từ '+esc(d.run.finalOpen||'—')+' · bắt đầu trước '+esc(d.run.finalDeadline||'—')+'</span></div><div><b>VIDEO</b><span>Hạn '+esc(d.run.clipDeadline||'—')+'</span></div></div></section>'+
+    '<details class="card class-details"><summary>THÔNG TIN LỚP HỌC</summary><div class="class-info-grid"><b>Lớp</b><span>'+esc(c.className||CTX.classId)+'</span><b>Mã sinh viên</b><span>'+esc(d.student.studentId)+'</span><b>Chương trình</b><span>'+esc(c.programName||c.programId||'—')+'</span><b>Ngày học</b><span>'+day+(totalDays?' / '+totalDays:'')+'</span><b>Ngày bắt đầu</b><span>'+formatDateVN(c.startDate)+'</span><b>Kết thúc dự kiến</b><span>'+formatDateVN(c.plannedEndDate)+'</span><b>Giảng viên</b><span>'+esc(teacher)+'</span><b>Trợ giảng</b><span>'+esc(ta)+'</span></div></details>';
+}
+function sessionCardHtml(title,sub,used,max,status){
+  const p=percent(used,max);return '<div class="session-card"><h3>'+esc(title)+'</h3><div class="session-sub">'+esc(sub)+'</div><div class="session-attempt">'+attemptsText(used,max,'lần')+'</div><div class="mini-progress"><u style="width:'+p+'%"></u></div><div class="session-status">'+esc(status)+'</div></div>';
+}
+function middaySessionCardHtml(d){
+  const w=d.drillWrite||{used:0,max:0,remaining:0},s=d.drillSpeak||{used:0,max:0,remaining:0};
+  return '<div class="session-card midday-session"><h3>CA THI GIỮA NGÀY</h3>'+
+    '<div class="session-sub">ĐỎ → VÀNG bằng thi viết · VÀNG → XANH BIỂN bằng thi nói</div>'+
+    '<div class="midday-attempt-row"><span><b>THI VIẾT</b>'+esc(w.used+'/'+w.max+' · còn '+w.remaining)+'</span><i class="mini-progress"><u style="width:'+percent(w.used,w.max)+'%"></u></i></div>'+
+    '<div class="midday-attempt-row"><span><b>THI NÓI</b>'+esc(s.used+'/'+s.max+' · còn '+s.remaining)+'</span><i class="mini-progress"><u style="width:'+percent(s.used,s.max)+'%"></u></i></div>'+
+    '<div class="session-status">Còn '+Number(d.counts.RED||0)+' ĐỎ · '+Number(d.counts.YELLOW||0)+' VÀNG</div></div>';
+}
+function renderExamOverview(d){
+  if(!d||!document.getElementById('examAttempts'))return;
+  examAttempts.textContent='CA SÁNG: '+d.morning.used+'/'+d.morning.maxAttempts+' · CA GIỮA NGÀY: viết '+d.drillWrite.used+'/'+d.drillWrite.max+', nói '+d.drillSpeak.used+'/'+d.drillSpeak.max+' · CA CUỐI NGÀY: '+d.final.used+'/'+d.final.maxAttempts;
+  examMorningMeta.textContent=attemptsText(d.morning.used,d.morning.maxAttempts,'lần')+' · '+uiState(d.morning.status);setBar(examMorningBar,d.morning.used,d.morning.maxAttempts);
+  examDrillMeta.textContent='Viết '+d.drillWrite.used+'/'+d.drillWrite.max+' · Nói '+d.drillSpeak.used+'/'+d.drillSpeak.max+' · còn '+d.counts.RED+' ĐỎ / '+d.counts.YELLOW+' VÀNG';setBar(examDrillBar,Math.max(d.drillWrite.used,d.drillSpeak.used),Math.max(d.drillWrite.max,d.drillSpeak.max));
+  examFinalMeta.textContent=attemptsText(d.final.used,d.final.maxAttempts,'lần')+' · '+uiState(d.final.status);setBar(examFinalBar,d.final.used,d.final.maxAttempts);
+}
+async function openExamOverview(){
+  showView('examView');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='exam'));
+  try{await Promise.all([window.IEC_V4_ENSURE_CONFIG(),loadStudentInfo(true)]);}catch(e){examAttempts.textContent='LỖI: '+String(e.message||e);}
+}
+
+function chartSvg(days){
+  if(!days||!days.length)return '<div class="msg">Chưa đủ dữ liệu để vẽ biểu đồ.</div>';
+  const W=900,H=300,L=54,R=18,T=26,B=44,max=Math.max(1,days.reduce(function(m,d){return Math.max(m,Number(d.red||0),Number(d.yellow||0),Number(d.green||0),Number(d.blue||0));},0));
+  function x(i){return L+(days.length===1?(W-L-R)/2:i*(W-L-R)/(days.length-1));}
+  function y(v){return T+(H-T-B)*(1-Number(v||0)/max);}
+  function pts(k){return days.map((d,i)=>x(i)+','+y(d[k])).join(' ');}
+  let g='';for(let n=0;n<=4;n++){const yy=T+(H-T-B)*n/4,val=Math.round(max*(1-n/4));g+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" class="chart-grid"/><text x="'+(L-10)+'" y="'+(yy+4)+'" class="chart-axis" text-anchor="end">'+val+'</text>';}
+  days.forEach((d,i)=>{if(days.length<=14||i%Math.ceil(days.length/14)===0)g+='<text x="'+x(i)+'" y="'+(H-14)+'" class="chart-axis" text-anchor="middle">N'+d.programDay+'</text>';});
+  return '<div class="trend-chart"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Biểu đồ tiến bộ theo ngày">'+g+'<polyline points="'+pts('red')+'" class="chart-line line-red"/><polyline points="'+pts('yellow')+'" class="chart-line line-yellow"/><polyline points="'+pts('green')+'" class="chart-line line-green"/><polyline points="'+pts('blue')+'" class="chart-line line-blue"/></svg></div><div class="chart-legend"><span class="red">ĐỎ</span><span class="yellow">VÀNG</span><span class="green">XANH LÁ</span><span class="blue">XANH BIỂN</span></div>';
 }
 async function loadResults(){
-  showView('resultView');
-  resultBody.className='msg';resultBody.textContent='Đang tải...';
-  const d=await jsonp(
-    API_BASE+'?api=student-results&class='+encodeURIComponent(CTX.classId)+
-    '&student='+encodeURIComponent(CTX.studentId)+
-    '&token='+encodeURIComponent(CTX.token)
-  );
+  showView('resultView');resultBody.className='msg';resultBody.textContent='Đang tải kết quả & tiến độ...';
+  const d=await jsonp(API_BASE+'?api=student-results&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&token='+encodeURIComponent(CTX.token));
   if(!d||d.ok===false)throw new Error(d&&d.error||'Không tải được kết quả');
-
-  let h='<h3>Lịch sử ngày học</h3><div class="table-scroll"><table><thead><tr>'+
-    '<th>Ngày</th><th>Sáng</th><th>Giữa ngày</th><th>Cuối ngày</th>'+
-    '<th>ĐỎ</th><th>VÀNG</th><th>XANH LÁ</th><th>XANH BIỂN</th>'+
-    '</tr></thead><tbody>';
-  (d.days||[]).forEach(function(x){
-    h+='<tr><td>'+x.programDay+'</td><td>'+esc(uiState(x.morningStatus))+'</td>'+
-      '<td>'+esc(uiState(x.drillStatus))+'</td><td>'+esc(uiState(x.finalStatus))+'</td>'+
-      '<td>'+x.red+'</td><td>'+x.yellow+'</td><td>'+x.green+'</td><td>'+x.blue+'</td></tr>';
-  });
-  h+='</tbody></table></div><h3>Trợ giảng xem xét XANH LÁ</h3>';
-
-  if(!(d.reviews||[]).length){
-    h+='<div class="msg">Chưa có trường hợp XANH LÁ.</div>';
-  }else{
-    h+='<div class="table-scroll"><table><thead><tr>'+
-      '<th>Ngày</th><th>Từ</th><th>Trạng thái</th><th>Nhận xét TA</th>'+
-      '</tr></thead><tbody>';
-    d.reviews.forEach(function(x){
-      h+='<tr><td>'+x.programDay+'</td><td>'+esc(x.word)+'</td>'+
-        '<td>'+esc(x.reviewStatus==='DONE'?uiState(x.result):'CHỜ TA')+'</td>'+
-        '<td>'+esc(x.comment||'—')+'</td></tr>';
-    });
-    h+='</tbody></table></div>';
-  }
-  resultBody.className='';resultBody.innerHTML=h;
+  renderResults(d);
 }
+function renderResults(d){
+  const s=d.summary||{},days=d.days||[],core=Math.max(Number(s.coreTotal||0),Number(s.learned||0)),coursePct=percent(s.blue,core),need=Number(s.red||0)+Number(s.yellow||0);
+  const first=days[0]||{},last=days[days.length-1]||{};
+  let dayHtml='';
+  days.slice().reverse().forEach(function(x){const learned=Number(x.learned||0),done=Number(x.blue||0),p=percent(done,learned);dayHtml+='<details class="result-day"><summary><div><b>NGÀY '+x.programDay+'</b><span>'+(x.date?formatDateVN(x.date)+' · ':'')+'Đã học '+learned+' · XANH BIỂN '+done+'</span></div><strong>'+p+'%</strong></summary><div class="result-day-body"><div class="state-mini"><span class="red">ĐỎ '+x.red+'</span><span class="yellow">VÀNG '+x.yellow+'</span><span class="green">XANH LÁ '+x.green+'</span><span class="blue">XANH BIỂN '+x.blue+'</span></div><div class="mini-progress"><u style="width:'+p+'%"></u></div><div class="history-sessions"><span>CA SÁNG: '+esc(uiState(x.morningStatus))+'</span><span>CA GIỮA: '+esc(uiState(x.drillStatus))+'</span><span>CA CUỐI: '+esc(uiState(x.finalStatus))+'</span></div></div></details>';});
+  let difficult='';(d.difficult||[]).forEach(function(x){const state=String(x.state||'');difficult+='<div class="difficult-item '+(state==='RED'?'red':'yellow')+'"><div><b>'+esc(x.english||x.vietnamese||x.contentId)+'</b><span>'+esc(x.vietnamese||'')+'</span></div><div class="difficult-meta">'+(state==='RED'?'ĐỎ – chưa đạt viết':'VÀNG – chưa đạt nói')+(x.wrongCount?' · sai '+x.wrongCount+' lần':'')+(x.redSinceDay?' · từ Ngày '+x.redSinceDay:'')+'</div><button class="secondary small" data-go-practice="1">ĐI LUYỆN</button></div>';});
+  if(!difficult)difficult='<div class="msg ok">Hiện không có nội dung ĐỎ/VÀNG cần cải thiện.</div>';
+  let reviews='';(d.reviews||[]).forEach(function(x){const blue=String(x.result||'').toUpperCase()==='BLUE';reviews+='<div class="review-item"><div><b>'+esc(x.word)+'</b><span>Ngày '+x.programDay+'</span></div><strong class="'+(blue?'resultBlue':'resultYellow')+'">'+(blue?'ĐẠT → XANH BIỂN':'CHƯA ĐẠT → VÀNG')+'</strong><p>'+esc(x.comment||x.error||'Không có nhận xét bổ sung.')+'</p></div>';});
+  if(!reviews)reviews='<div class="msg">Chưa có đánh giá đã hoàn tất của trợ giảng.</div>';
+  resultBody.className='dashboard-stack';
+  resultBody.innerHTML='<section class="card page-intro"><h2>KẾT QUẢ & TIẾN ĐỘ</h2><div class="sub">Theo dõi sự tiến bộ từ đầu khóa, nội dung còn yếu và các đánh giá đã hoàn tất.</div></section>'+ 
+    '<section class="card"><h2>TIẾN ĐỘ HỌC TẬP TOÀN KHÓA</h2><div class="course-result-kpis"><div><span>Đã học</span><b>'+Number(s.learned||0)+'</b></div><div><span>XANH BIỂN</span><b>'+Number(s.blue||0)+'</b></div><div><span>Cần cải thiện</span><b>'+need+'</b></div><div><span>TA đã xét</span><b>'+Number((d.reviews||[]).length)+'</b></div></div><div class="course-progress-line"><div><span>Hoàn thành nội dung toàn khóa</span><b>'+Number(s.blue||0)+' / '+core+' · '+coursePct+'%</b></div><div class="big-progress"><u style="width:'+coursePct+'%"></u></div></div></section>'+ 
+    '<section class="card"><h2>BIỂU ĐỒ TIẾN BỘ THEO NGÀY</h2><div class="sub">Mục tiêu: ĐỎ giảm dần và XANH BIỂN tăng dần.</div>'+chartSvg(days)+'</section>'+ 
+    '<section class="card"><h2>NHẬN XÉT TIẾN BỘ</h2><div class="progress-notes"><span>XANH BIỂN: <b>'+Number(first.blue||0)+' → '+Number(last.blue||0)+'</b></span><span>ĐỎ: <b>'+Number(first.red||0)+' → '+Number(last.red||0)+'</b></span><span>Ngày đã tham gia: <b>'+days.length+'</b></span></div></section>'+ 
+    '<section class="card"><h2>KẾT QUẢ TỪNG NGÀY</h2><div class="sub">Bấm từng ngày để xem chi tiết; không cần kéo qua một bảng dài.</div><div class="result-days">'+(dayHtml||'<div class="msg">Chưa có lịch sử ngày học.</div>')+'</div></section>'+ 
+    '<section class="card"><h2>ĐIỂM CẦN CẢI THIỆN</h2><div class="sub">Ưu tiên nội dung sai nhiều hoặc tồn lâu.</div><div class="difficult-list">'+difficult+'</div></section>'+ 
+    '<section class="card"><h2>ĐÁNH GIÁ CỦA TRỢ GIẢNG</h2><div class="sub">Chỉ hiển thị các trường hợp trợ giảng đã xét xong.</div><div class="review-list">'+reviews+'</div></section>';
+  resultBody.onclick=function(e){const b=e.target.closest('[data-go-practice]');if(b)showFrame('drill.html','frame');};
+}
+
 function buildStudentNav(){
-  CTX=requireContext();
-  portalMeta.textContent=CTX.studentId+' · IEC V4.1';
-  addTab('info','THÔNG TIN',function(){
-    showView('infoView');
-    loadStudentInfo().catch(showErr);
-  });
+  CTX=requireContext();portalMeta.textContent=CTX.studentId+' · IEC V4.1';
+  addTab('info','THÔNG TIN',function(){showView('infoView');loadStudentInfo(true).catch(showErr);});
   addTab('frame','LUYỆN TẬP',()=>showFrame('drill.html','frame'));
-  addTab('exam','CA THI',function(){
-    showView('examView');
-    document.querySelectorAll('#nav button').forEach(
-      x=>x.classList.toggle('active',x.dataset.id==='exam')
-    );
-    window.IEC_V4_ENSURE_CONFIG().catch(function(e){examAttempts.textContent='LỖI: '+String(e.message||e);});
-  });
+  addTab('exam','CA THI',()=>openExamOverview());
   addTab('result','KẾT QUẢ',()=>loadResults().catch(showErr));
 }
 function routeStudent(){
@@ -243,56 +237,17 @@ function routeStudent(){
     if(which==='final')return showFrame('final.html','exam');
     if(which==='morning')return showFrame('morning.html','exam');
     if(which==='drill')return showFrame('drill.html?examOnly=1','exam');
-    showView('examView');
-    document.querySelectorAll('#nav button').forEach(
-      x=>x.classList.toggle('active',x.dataset.id==='exam')
-    );
-    window.IEC_V4_ENSURE_CONFIG().catch(function(e){examAttempts.textContent='LỖI: '+String(e.message||e);});
-    return;
+    return openExamOverview();
   }
   if(VIEW==='result')return loadResults().catch(showErr);
-  showView('infoView');
-  loadStudentInfo().catch(showErr);
+  showView('infoView');loadStudentInfo(true).catch(showErr);
 }
-function setupTa(){
-  portalMeta.textContent='Cổng TRỢ GIẢNG';
-  addTab('info','THÔNG TIN',function(){
-    showView('infoView');
-    infoBody.textContent='XANH LÁ: trợ giảng đánh giá ĐẠT → XANH BIỂN; CHƯA ĐẠT → VÀNG.';
-  });
-  addTab('manage','QUẢN LÝ',()=>showFrame('ta-review.html','manage'));
-  if(VIEW==='manage')showFrame('ta-review.html','manage');
-  else document.querySelector('#nav button').click();
-}
-function setupDashboard(){
-  portalMeta.textContent='QUẢN LÝ IEC';
-  addTab('manage','QUẢN LÝ',()=>showFrame('dashboard.html','manage'));
-  showFrame('dashboard.html','manage');
-}
-function showErr(e){
-  const target=document.getElementById('infoBody');
-  if(target){target.className='msg err';target.textContent='LỖI: '+String(e.message||e);}
-  portalMeta.textContent='LỖI';
-}
+function setupTa(){portalMeta.textContent='Cổng TRỢ GIẢNG';addTab('info','THÔNG TIN',function(){showView('infoView');infoBody.className='card';infoBody.textContent='XANH LÁ: trợ giảng đánh giá ĐẠT → XANH BIỂN; CHƯA ĐẠT → VÀNG.';});addTab('manage','QUẢN LÝ',()=>showFrame('ta-review.html','manage'));if(VIEW==='manage')showFrame('ta-review.html','manage');else document.querySelector('#nav button').click();}
+function setupDashboard(){portalMeta.textContent='QUẢN LÝ IEC';addTab('manage','QUẢN LÝ',()=>showFrame('dashboard.html','manage'));showFrame('dashboard.html','manage');}
+function showErr(e){const target=document.getElementById('infoBody');if(target){target.className='msg err';target.textContent='LỖI: '+String(e.message||e);}portalMeta.textContent='LỖI';}
 
 document.addEventListener('DOMContentLoaded',function(){
-  try{
-    if(ROLE==='ta'){
-      setupTa();
-    }else if(ROLE==='dashboard'||ROLE==='admin'){
-      setupDashboard();
-    }else{
-      buildStudentNav();
-    }
-
-    if(ROLE!=='ta'&&ROLE!=='dashboard'&&ROLE!=='admin'){
-      // PERFORMANCE: route ngay. client-config chỉ tải khi màn hình thực sự cần nó
-      // (LUYỆN TẬP/THI NÓI/CA THI), nên CA SÁNG và THÔNG TIN bớt một request mở trang.
-      routeStudent();
-    }
-  }catch(e){
-    showErr(e);
-  }
+  try{if(ROLE==='ta')setupTa();else if(ROLE==='dashboard'||ROLE==='admin')setupDashboard();else{buildStudentNav();routeStudent();window.IEC_V4_ENSURE_CONFIG().catch(function(){});}}catch(e){showErr(e);}
 });
 </script>
 </body>
