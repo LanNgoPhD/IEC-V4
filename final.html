@@ -1,27 +1,115 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>IEC V4 – Thi nói cuối</title><link rel="stylesheet" href="styles.css?v=4.1.0"><script src="config.js?v=20261004.1"></script><script src="common.js?v=20261005.2"></script></head><body><script>(function(){if(qp('embed')==='1')return;var u=new URL('index.html',location.href);new URLSearchParams(location.search).forEach(function(v,k){u.searchParams.set(k,v)});u.searchParams.set('view','exam');u.searchParams.set('exam','final');location.replace(u.toString());})();</script><div class="wrap">
-<div class="card"><h1>THI NÓI CUỐI</h1><div id="finalRule" class="sub">Chỉ kiểm tra các từ VÀNG còn lại.</div><div id="meta" class="statusbar"></div><button id="startBtn">BẮT ĐẦU THI NÓI CUỐI</button><div id="topMsg" class="msg"></div></div>
-<div id="testCard" class="card hidden"><div id="progress" class="tag"></div><div id="prompt" class="bigword">---</div><div id="timer" class="timer"></div><div id="status" class="statusbar"></div><div class="info-grid"><b>Máy nghe được</b><span id="heard">---</span><b>Nói lại (lệnh AGAIN)</b><span id="again">---</span></div></div>
-<div id="resultCard" class="card hidden"><h2>Kết quả tự động</h2><div id="resultSummary" class="msg"></div><div class="muted">XANH LÁ là trạng thái tạm khi nhận diện chưa đủ chắc chắn và được giữ để trợ giảng xem xét; không tự chuyển ĐỎ chỉ vì STT chưa khớp.</div></div>
-<div id="clipBox" class="card hidden"><h2>Nộp liên kết video</h2><input id="clipUrl" type="text" placeholder="https://..."><div class="row" style="margin-top:10px"><button id="clipBtn" disabled>NỘP LIÊN KẾT VIDEO</button></div><div id="submitMsg" class="msg"></div></div>
-</div><iframe name="submitFrame" class="hidden"></iframe><script>
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>IEC V4.1 – Thi nói cuối</title>
+  <link rel="stylesheet" href="styles.css?v=20261006.2">
+  <script src="config.js?v=20261006.1"></script>
+  <script src="common.js?v=20261005.2"></script>
+</head>
+<body>
+<script>
+(function(){
+  if(qp('embed')==='1')return;
+  var u=new URL('index.html',location.href);
+  new URLSearchParams(location.search).forEach(function(v,k){u.searchParams.set(k,v)});
+  u.searchParams.set('view','exam');
+  u.searchParams.set('exam','final');
+  location.replace(u.toString());
+})();
+</script>
+
+<div class="wrap">
+  <div class="card">
+    <h1>THI NÓI CUỐI</h1>
+    <div id="finalRule" class="sub">Chỉ kiểm tra các từ VÀNG còn lại.</div>
+    <div id="meta" class="statusbar">Đang chuẩn bị...</div>
+    <button id="startBtn">BẮT ĐẦU THI NÓI CUỐI</button>
+    <div id="topMsg" class="msg"></div>
+  </div>
+
+  <div id="testCard" class="card hidden">
+    <div id="progress" class="tag"></div>
+    <div id="prompt" class="bigword">---</div>
+    <div id="timer" class="timer"></div>
+    <div id="status" class="statusbar"></div>
+    <div class="info-grid">
+      <b>Máy nghe được</b><span id="heard">---</span>
+      <b>Nói lại (lệnh AGAIN)</b><span id="again">---</span>
+    </div>
+  </div>
+
+  <div id="resultCard" class="card hidden">
+    <h2>KẾT QUẢ</h2>
+    <div id="resultSummary" class="msg"></div>
+    <div class="muted">XANH LÁ là trạng thái chờ trợ giảng xét duyệt; lỗi nói không tự chuyển thành ĐỎ.</div>
+  </div>
+
+  <div id="clipBox" class="card hidden">
+    <h2>NỘP LIÊN KẾT VIDEO</h2>
+    <input id="clipUrl" type="text" placeholder="https://...">
+    <div class="row" style="margin-top:10px">
+      <button id="clipBtn" disabled>NỘP LIÊN KẾT VIDEO</button>
+    </div>
+    <div id="submitMsg" class="msg"></div>
+  </div>
+
+  <footer class="app-footer">Phát triển bởi TS. Ngô Ngọc Lân</footer>
+</div>
+
+<iframe name="submitFrame" class="hidden"></iframe>
+
+<script>
 let CTX,DATA,activePost='',clipPending=false;
+
+function inheritClientConfig(){
+  try{
+    if(window.parent&&window.parent!==window&&window.parent.IEC_V4_RUNTIME_CONFIG){
+      IEC_CONFIG=window.parent.IEC_V4_RUNTIME_CONFIG;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+async function ensureClientConfig(){
+  if(IEC_CONFIG)return IEC_CONFIG;
+  if(inheritClientConfig())return IEC_CONFIG;
+  try{
+    if(window.parent&&window.parent!==window){
+      if(typeof window.parent.IEC_V4_ENSURE_CONFIG==='function')await window.parent.IEC_V4_ENSURE_CONFIG();
+      else if(window.parent.IEC_V4_CONFIG_PROMISE)await window.parent.IEC_V4_CONFIG_PROMISE;
+      if(inheritClientConfig())return IEC_CONFIG;
+    }
+  }catch(e){}
+  return loadClientConfig();
+}
 function configuredMaxRestart(){
   const v=Number(IEC_CONFIG&&IEC_CONFIG.MAX_RESTART);
   return Number.isFinite(v)?Math.max(0,Math.floor(v)):1;
+}
+function updateRule(max){
+  finalRule.textContent=
+    'Chỉ kiểm tra các từ VÀNG còn lại · Tối đa '+Number(max||1)+' lần thi mỗi ngày';
 }
 function showIosSpeakGuide(){
   return new Promise(resolve=>{
     const isChrome=/CriOS/i.test(String(navigator.userAgent||''));
     const old=document.getElementById('iosSpeakGuideOverlay');
     if(old)old.remove();
+
     const overlay=document.createElement('div');
     overlay.id='iosSpeakGuideOverlay';
     overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;padding:18px;';
+
     const box=document.createElement('div');
     box.style.cssText='width:min(440px,100%);background:#fff;border-radius:16px;padding:20px;box-shadow:0 18px 50px rgba(0,0,0,.28);text-align:left;';
+
     const title=document.createElement('h3');
     title.textContent='THI NÓI TRÊN iPHONE / iPAD';
     title.style.cssText='margin:0 0 12px;font-size:20px;text-align:center;';
+
     const body=document.createElement('div');
     body.style.cssText='font-size:16px;line-height:1.55;';
     body.innerHTML=
@@ -29,24 +117,33 @@ function showIosSpeakGuide(){
       '<div>1. Mở bài bằng <b>Google Chrome</b>.</div>'+
       '<div>2. Bật micrô: <b>Cài đặt → Ứng dụng → Chrome → Micrô → Bật</b>.</div>'+
       '<div style="margin-top:8px"><b>Không dùng Safari cho phần THI NÓI.</b></div>';
+
     if(!isChrome){
       const warn=document.createElement('div');
       warn.style.cssText='margin-top:14px;padding:10px 12px;border-radius:10px;background:#fff4e5;color:#9a3412;font-weight:700;';
       warn.textContent='Trang hiện tại không mở bằng Chrome. Hãy đóng trang này và mở lại liên kết bằng Google Chrome.';
       body.appendChild(warn);
     }
+
     const btn=document.createElement('button');
     btn.type='button';
     btn.textContent=isChrome?'ĐÃ HIỂU – VÀO THI':'ĐÓNG – MỞ LẠI BẰNG CHROME';
     btn.style.cssText='width:100%;margin-top:18px;padding:13px 14px;font-size:16px;font-weight:800;border:0;border-radius:10px;cursor:pointer;';
     btn.onclick=()=>{overlay.remove();resolve(isChrome);};
-    box.appendChild(title);box.appendChild(body);box.appendChild(btn);overlay.appendChild(box);document.body.appendChild(overlay);
+
+    box.appendChild(title);box.appendChild(body);box.appendChild(btn);
+    overlay.appendChild(box);document.body.appendChild(overlay);
   });
 }
 async function ensureIosSpeakReady(){
   if(typeof ttsIsIOS!=='function'||!ttsIsIOS())return true;
+
   const mayContinue=await showIosSpeakGuide();
-  if(!mayContinue){setMsg(topMsg,'Trên iPhone/iPad, hãy mở bài bằng Google Chrome trước khi THI NÓI.','err');return false;}
+  if(!mayContinue){
+    setMsg(topMsg,'Trên iPhone/iPad, hãy mở bài bằng Google Chrome trước khi THI NÓI.','err');
+    return false;
+  }
+
   if(navigator.mediaDevices&&typeof navigator.mediaDevices.getUserMedia==='function'){
     try{
       const stream=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -58,22 +155,168 @@ async function ensureIosSpeakReady(){
   }
   return true;
 }
-document.addEventListener('DOMContentLoaded',async()=>{   window.addEventListener('message',handleBackend);   startBtn.onclick=startFinal;   clipBtn.onclick=submitClip;   try{     CTX=requireContext();     await loadClientConfig();     meta.textContent='Sẵn sàng';     restoreClipState();   }catch(e){     setMsg(topMsg,String(e.message||e),'err');     startBtn.disabled=true;   } });
-async function startFinal(){startBtn.disabled=true;setMsg(topMsg,'Đang tải danh sách VÀNG...');try{DATA=await jsonp(API_BASE+'?api=final-data&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&run='+encodeURIComponent(CTX.runId)+'&token='+encodeURIComponent(CTX.token));if(!DATA||DATA.ok===false)throw new Error(DATA&&DATA.error||'Không tải được bài thi nói cuối');document.getElementById('finalRule').textContent=
-  ' còn lại · Tối đa '+
-  Number(DATA.attempts&&DATA.attempts.max||1)+
-  ' lần thi mỗi ngày';if(DATA.submitted){
-  meta.textContent='NGÀY '+DATA.run.programDay+   ' · Đã dùng '+Number(DATA.attempts&&DATA.attempts.used||0)+   '/'+Number(DATA.attempts&&DATA.attempts.max||1)+' lần thi';
-  startBtn.classList.add('hidden');
-  topMsg.textContent='';
-  showSubmitted(DATA);
-  return
-}if(DATA.empty){startBtn.classList.add('hidden');setMsg(topMsg,DATA.message||'Không có từ VÀNG cần thi.','ok');return}if(!(await ensureIosSpeakReady())){startBtn.disabled=false;return}meta.textContent='NGÀY '+DATA.run.programDay+   ' · '+DATA.totalCount+' từ VÀNG'+   ' · Lần thi '+Number(DATA.attemptNo||1)+   '/'+Number(DATA.attempts&&DATA.attempts.max||1);topMsg.textContent='';startBtn.classList.add('hidden');testCard.classList.remove('hidden');const results=await runOfficialSpeechTest(DATA.words,DATA.profile,DATA.contextPhrases,{beforeWord:(w,i,n)=>{progress.textContent=(i+1)+' / '+n;document.getElementById('prompt').textContent=String(w.vietnamese||'');heard.textContent='---';status.textContent='CHUẨN BỊ';timer.textContent='';timer.style.color='';again.textContent='Có thể nói '+String(IEC_CONFIG.RESTART_WORD||'AGAIN')+' tối đa '+configuredMaxRestart()+' lần trong cửa phản xạ'},status:(st,h,info)=>{status.textContent=st;heard.textContent=h||'---';again.textContent='AGAIN '+Number(info.restartCount||0)+' / '+configuredMaxRestart()},timer:(t)=>{const sec=Math.max(0,Number(t&&t.remainingSec)||0);timer.textContent='⏱ '+String(t&&t.label||'THỜI GIAN')+' · '+sec.toFixed(1)+' s';timer.style.color=(t&&t.urgent)?'#b42318':''},afterWord:()=>{status.textContent='ĐÃ GHI NHẬN · hệ thống sẽ chấm sau khi kết thúc bài';timer.textContent='✓ ĐÃ CHỐT';timer.style.color=''}});activePost='FINAL';setMsg(submitMsg,'Đang lưu bài thi nói cuối...');postPayload({api:'final-submit',classId:CTX.classId,studentId:CTX.studentId,runId:CTX.runId,token:CTX.token,sessionId:DATA.sessionId,results:results})}catch(e){startBtn.disabled=false;setMsg(topMsg,'LỖI: '+String(e.message||e),'err')}}
-function showSubmitted(d){   resultCard.classList.remove('hidden');   resultSummary.className='msg ok';    resultSummary.textContent=     'Đã lưu: '+     'XANH BIỂN – Đã hoàn thành: '+Number(d.blue||0)+     ' · XANH LÁ – Chờ trợ giảng xét duyệt: '+Number(d.green||0)+     ' · VÀNG – Chưa đạt thi nói: '+Number(d.yellow||0)+     ' · ĐỎ – Chưa đạt thi viết: '+Number(d.red||0)+'.';    if(d.clipRequired){     clipBox.classList.remove('hidden');     if(d.clipSaved) applyClipLocked(d.clipUrl||'');     else clipBtn.disabled=false;   } }
-function clipKey(){return 'IEC_V4_CLIP::'+CTX.classId+'::'+CTX.studentId+'::'+CTX.runId}
-function applyClipLocked(url){clipBtn.dataset.locked='1';clipBtn.disabled=true;clipUrl.readOnly=true;if(url&&!clipUrl.value)clipUrl.value=url;clipBtn.textContent='ĐÃ NỘP LIÊN KẾT ✓';setMsg(submitMsg,'ĐÃ GỬI LIÊN KẾT VIDEO.','ok')}
-function restoreClipState(){try{const u=localStorage.getItem(clipKey());if(u)applyClipLocked(u)}catch(e){}}
-function submitClip(){const u=String(clipUrl.value||'').trim();if(clipBtn.dataset.locked==='1'||clipPending)return;if(!/^https?:\/\//i.test(u)){alert('Hãy dán liên kết video hợp lệ bắt đầu bằng http/https.');return}clipPending=true;activePost='CLIP';clipBtn.disabled=true;clipUrl.readOnly=true;clipBtn.textContent='ĐANG NỘP...';setMsg(submitMsg,'Đang gửi liên kết video...');postPayload({api:'clip-submit',classId:CTX.classId,studentId:CTX.studentId,runId:CTX.runId,token:CTX.token,clipUrl:u})}
+async function startFinal(){
+  startBtn.disabled=true;
+  resultCard.classList.add('hidden');
+  setMsg(topMsg,'Đang tải danh sách VÀNG...');
+
+  try{
+    const cfgPromise=ensureClientConfig();
+    DATA=await jsonp(
+      API_BASE+'?api=final-data&class='+encodeURIComponent(CTX.classId)+
+      '&student='+encodeURIComponent(CTX.studentId)+
+      '&run='+encodeURIComponent(CTX.runId)+
+      '&token='+encodeURIComponent(CTX.token)
+    );
+    if(!DATA||DATA.ok===false)throw new Error(DATA&&DATA.error||'Không tải được bài thi nói cuối');
+    await cfgPromise;
+
+    const used=Number(DATA.attempts&&DATA.attempts.used||0);
+    const max=Number(DATA.attempts&&DATA.attempts.max||1);
+    updateRule(max);
+
+    if(DATA.submitted){
+      meta.textContent='NGÀY '+DATA.run.programDay+' · Đã dùng '+used+'/'+max+' lần thi';
+      startBtn.classList.add('hidden');
+      topMsg.textContent='';
+      showSubmitted(DATA);
+      return;
+    }
+
+    if(DATA.empty){
+      meta.textContent='NGÀY '+DATA.run.programDay+' · Không còn VÀNG';
+      startBtn.classList.add('hidden');
+      setMsg(topMsg,DATA.message||'Không có từ VÀNG cần thi.','ok');
+      return;
+    }
+
+    // Một phiên FINAL đang hoạt động luôn cần clip mới khi thực sự kết thúc.
+    // Không để localStorage của FINAL cũ khóa nhầm lượt đang thi/reopened.
+    resetClipForActiveFinal();
+
+    if(!(await ensureIosSpeakReady())){
+      startBtn.disabled=false;
+      return;
+    }
+
+    meta.textContent=
+      'NGÀY '+DATA.run.programDay+
+      ' · '+DATA.totalCount+' từ VÀNG'+
+      ' · Lần thi '+Number(DATA.attemptNo||used+1)+'/'+max;
+
+    topMsg.textContent='';
+    startBtn.classList.add('hidden');
+    testCard.classList.remove('hidden');
+
+    const results=await runOfficialSpeechTest(
+      DATA.words,DATA.profile,DATA.contextPhrases,
+      {
+        beforeWord:(w,i,n)=>{
+          progress.textContent=(i+1)+' / '+n;
+          prompt.textContent=String(w.vietnamese||'');
+          heard.textContent='---';
+          status.textContent='CHUẨN BỊ';
+          timer.textContent='';
+          timer.style.color='';
+          again.textContent='Có thể nói '+String(IEC_CONFIG.RESTART_WORD||'AGAIN')+
+            ' tối đa '+configuredMaxRestart()+' lần trong cửa phản xạ';
+        },
+        status:(st,h,info)=>{
+          status.textContent=st;
+          heard.textContent=h||'---';
+          again.textContent='AGAIN '+Number(info.restartCount||0)+' / '+configuredMaxRestart();
+        },
+        timer:(t)=>{
+          const sec=Math.max(0,Number(t&&t.remainingSec)||0);
+          timer.textContent='⏱ '+String(t&&t.label||'THỜI GIAN')+' · '+sec.toFixed(1)+' s';
+          timer.style.color=(t&&t.urgent)?'#b42318':'';
+        },
+        afterWord:()=>{
+          status.textContent='ĐÃ GHI NHẬN · hệ thống sẽ chấm sau khi kết thúc bài';
+          timer.textContent='✓ ĐÃ CHỐT';
+          timer.style.color='';
+        }
+      }
+    );
+
+    activePost='FINAL';
+    setMsg(submitMsg,'Đang lưu bài thi nói cuối...');
+    postPayload({
+      api:'final-submit',
+      classId:CTX.classId,studentId:CTX.studentId,runId:CTX.runId,token:CTX.token,
+      sessionId:DATA.sessionId,results:results
+    });
+  }catch(e){
+    startBtn.disabled=false;
+    setMsg(topMsg,'LỖI: '+String(e.message||e),'err');
+  }
+}
+function resultText(d){
+  return 'XANH BIỂN – Đã hoàn thành: '+Number(d.blue||0)+
+    ' · XANH LÁ – Chờ trợ giảng xét duyệt: '+Number(d.green||0)+
+    ' · VÀNG – Chưa đạt thi nói: '+Number(d.yellow||0)+
+    ' · ĐỎ – Chưa đạt thi viết: '+Number(d.red||0)+'.';
+}
+function showSubmitted(d){
+  resultCard.classList.remove('hidden');
+  resultSummary.className='msg ok';
+  resultSummary.textContent=resultText(d);
+
+  if(d.clipRequired){
+    clipBox.classList.remove('hidden');
+    if(d.clipSaved)applyClipLocked(d.clipUrl||'');
+    else clipBtn.disabled=false;
+  }
+}
+function clipKey(){
+  return 'IEC_V4_CLIP::'+CTX.classId+'::'+CTX.studentId+'::'+CTX.runId;
+}
+function applyClipLocked(url){
+  clipBtn.dataset.locked='1';
+  clipBtn.disabled=true;
+  clipUrl.readOnly=true;
+  if(url&&!clipUrl.value)clipUrl.value=url;
+  clipBtn.textContent='ĐÃ NỘP LIÊN KẾT ✓';
+  setMsg(submitMsg,'ĐÃ GỬI LIÊN KẾT VIDEO.','ok');
+}
+function restoreClipState(){
+  try{
+    const u=localStorage.getItem(clipKey());
+    if(u)applyClipLocked(u);
+  }catch(e){}
+}
+function resetClipForActiveFinal(){
+  try{localStorage.removeItem(clipKey());}catch(e){}
+  clipPending=false;
+  clipBox.classList.add('hidden');
+  clipBtn.dataset.locked='';
+  clipBtn.disabled=true;
+  clipBtn.textContent='NỘP LIÊN KẾT VIDEO';
+  clipUrl.readOnly=false;
+  clipUrl.value='';
+  submitMsg.textContent='';
+}
+function submitClip(){
+  const u=String(clipUrl.value||'').trim();
+  if(clipBtn.dataset.locked==='1'||clipPending)return;
+  if(!/^https?:\/\//i.test(u)){
+    alert('Hãy dán liên kết video hợp lệ bắt đầu bằng http/https.');
+    return;
+  }
+
+  clipPending=true;
+  activePost='CLIP';
+  clipBtn.disabled=true;
+  clipUrl.readOnly=true;
+  clipBtn.textContent='ĐANG NỘP...';
+  setMsg(submitMsg,'Đang gửi liên kết video...');
+
+  postPayload({
+    api:'clip-submit',
+    classId:CTX.classId,studentId:CTX.studentId,runId:CTX.runId,token:CTX.token,
+    clipUrl:u
+  });
+}
 function handleBackend(e){
   const d=e.data;
   if(!d||typeof d!=='object'||d.ok===undefined)return;
@@ -91,9 +334,7 @@ function handleBackend(e){
 
   if(d.clipSaved){
     clipPending=false;
-    try{
-      localStorage.setItem(clipKey(),d.clipUrl||clipUrl.value);
-    }catch(e){}
+    try{localStorage.setItem(clipKey(),d.clipUrl||clipUrl.value);}catch(e){}
     applyClipLocked(d.clipUrl||'');
     return;
   }
@@ -101,20 +342,14 @@ function handleBackend(e){
   if(activePost==='FINAL'){
     resultCard.classList.remove('hidden');
     resultSummary.className='msg ok';
-
-    resultSummary.textContent=
-      'Đã lưu: '+
-      'XANH BIỂN – Đã hoàn thành: '+Number(d.blue||0)+
-      ' · XANH LÁ – Chờ trợ giảng xét duyệt: '+Number(d.green||0)+
-      ' · VÀNG – Chưa đạt thi nói: '+Number(d.yellow||0)+
-      ' · ĐỎ – Chưa đạt thi viết: '+Number(d.red||0)+'.';
+    resultSummary.textContent=resultText(d);
 
     const used=Number(d.attempts&&d.attempts.used||0);
     const max=Number(d.attempts&&d.attempts.max||1);
     const remaining=Number(d.attempts&&d.attempts.remaining||0);
     const yellow=Number(d.yellow||0);
 
-    if(!d.finalStageDone && yellow>0 && remaining>0){
+    if(!d.finalStageDone&&yellow>0&&remaining>0){
       meta.textContent=
         'NGÀY '+DATA.run.programDay+
         ' · Đã dùng '+used+'/'+max+' lần thi'+
@@ -123,7 +358,7 @@ function handleBackend(e){
       setMsg(
         submitMsg,
         'Đã lưu lần thi '+used+'/'+max+
-        '. Còn '+yellow+' từ VÀNG. Bạn có thể thi lần tiếp theo.',
+        ' · Còn '+yellow+' từ VÀNG. Bạn có thể thi lần tiếp theo.',
         'ok'
       );
 
@@ -131,6 +366,7 @@ function handleBackend(e){
       startBtn.classList.remove('hidden');
       startBtn.disabled=false;
       testCard.classList.add('hidden');
+      clipBox.classList.add('hidden');
 
       DATA=null;
       activePost='';
@@ -142,7 +378,6 @@ function handleBackend(e){
       ' · Đã dùng '+used+'/'+max+' lần thi · ĐÃ KẾT THÚC';
 
     setMsg(submitMsg,'Bài thi nói cuối đã hoàn thành.','ok');
-
     startBtn.classList.add('hidden');
     testCard.classList.add('hidden');
 
@@ -153,4 +388,29 @@ function handleBackend(e){
 
     activePost='';
   }
-}</script></body></html>
+}
+
+document.addEventListener('DOMContentLoaded',async function(){
+  window.addEventListener('message',handleBackend);
+  startBtn.onclick=startFinal;
+  clipBtn.onclick=submitClip;
+
+  try{
+    CTX=requireContext();
+    meta.textContent='Sẵn sàng';
+    restoreClipState();
+    ensureClientConfig().then(function(){
+      updateRule(Number(IEC_CONFIG.FINAL_LAST_MAX_ATTEMPTS||1));
+      meta.textContent='Sẵn sàng · tối đa '+Number(IEC_CONFIG.FINAL_LAST_MAX_ATTEMPTS||1)+' lần thi/ngày';
+    }).catch(function(e){
+      setMsg(topMsg,String(e.message||e),'err');
+      startBtn.disabled=true;
+    });
+  }catch(e){
+    setMsg(topMsg,String(e.message||e),'err');
+    startBtn.disabled=true;
+  }
+});
+</script>
+</body>
+</html>

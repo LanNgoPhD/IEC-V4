@@ -30,3 +30,82 @@ button.danger{background:var(--bad)}
 @media(max-width:720px){.portal-shell{padding:8px}.portal-frame{height:calc(100vh - 150px);min-height:600px}.portal-tabs{position:sticky;top:0;background:#fff;padding:7px 0;z-index:10}.portal-tabs button{flex:1;min-width:42%}.memory-row{grid-template-columns:1fr}}
 
 .exam-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.exam-grid button{min-height:120px;text-align:left;display:flex;flex-direction:column;gap:8px;justify-content:center}.exam-grid button b{font-size:18px}.exam-grid button span{font-weight:500;line-height:1.35}@media(max-width:720px){.exam-grid{grid-template-columns:1fr}}
+
+
+/* ============================================================
+   IEC V4.1 CLEAN UI / PERFORMANCE PASS – 2026-10-06
+   ============================================================ */
+.msg:empty{display:none}
+.app-footer{
+  text-align:center;
+  color:#98a2b3;
+  font-size:12px;
+  padding:12px 0 18px;
+}
+.section-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.practice-block{
+  margin-top:18px;
+  padding-top:16px;
+  border-top:1px solid var(--line);
+}
+.practice-block h3{
+  margin-bottom:8px;
+  font-size:17px;
+}
+#dictationInput{
+  margin:10px 0;
+}
+#dictationCheck{
+  margin-bottom:4px;
+}
+.stateLegend{
+  justify-content:flex-end;
+}
+.stateLegend span{
+  white-space:nowrap;
+}
+.portal-header .sub{
+  margin-top:3px;
+}
+.exam-grid button{
+  transition:transform .12s ease,box-shadow .12s ease;
+}
+.exam-grid button:hover{
+  transform:translateY(-1px);
+  box-shadow:0 6px 16px rgba(16,24,40,.10);
+}
+.portal-frame{
+  background:var(--bg);
+}
+#newCard .item,#repairPracticeCard .item{
+  background:#fff;
+}
+.statusbar{
+  line-height:1.45;
+}
+.card>.sub{
+  line-height:1.45;
+}
+@media(max-width:720px){
+  .stateLegend{
+    justify-content:flex-start;
+  }
+  .stateLegend span{
+    white-space:normal;
+  }
+  .card{
+    padding:16px;
+  }
+  button,.btn{
+    min-height:42px;
+  }
+  .tts-settings{
+    gap:7px;
+  }
+}

@@ -1,19 +1,153 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>IEC V4 – Bài viết buổi sáng</title><link rel="stylesheet" href="styles.css?v=4.1.0"><script src="config.js?v=20261004.1"></script><script src="common.js?v=20261005.2"></script></head><body><script>(function(){if(qp('embed')==='1')return;var u=new URL('index.html',location.href);new URLSearchParams(location.search).forEach(function(v,k){u.searchParams.set(k,v)});u.searchParams.set('view','exam');u.searchParams.set('exam','morning');location.replace(u.toString());})();</script><div class="wrap">
-<div class="card"><h1>BÀI THI VIẾT SÁNG</h1><div id="morningRule" class="sub">TỪ MỚI + ĐỎ CŨ · phải đạt viết trước khi được thi nói</div><div id="meta" class="statusbar"></div></div>
-<div id="studyCard" class="card hidden"><div class="row" style="justify-content:space-between"><div><h2>1. Học trước khi kiểm tra viết</h2><div class="muted">Nghe → nghe – nói lại → nói đuổi theo mẫu. Khi bắt đầu bài viết, tiếng Anh và nút nghe sẽ được khóa.</div></div><div class="row tts-settings"><label>Giọng đọc</label><select id="voicePreset" aria-label="Giọng đọc"><option>Nam – Mỹ</option><option>Nữ – Anh</option></select><label>Tốc độ</label><select id="rate" aria-label="Tốc độ đọc"></select></div></div><div id="studyList"></div><button id="startTest">BẮT ĐẦU BÀI VIẾT</button></div>
-<div id="testCard" class="card hidden"><h2>2. Kiểm tra viết</h2><div class="muted">Nhập thuật ngữ tiếng Anh tương ứng. Viết đúng → VÀNG; viết chưa đúng → ĐỎ và chuyển sang phần luyện tập.</div><div id="questions"></div><button id="submitBtn">NỘP BÀI VIẾT</button><div id="msg" class="msg"></div></div>
-<div id="doneCard" class="card hidden"><h2>Bài viết buổi sáng đã hoàn thành</h2><div id="doneMsg" class="msg ok">Bài thi viết đã được lưu.</div></div>
-</div><iframe name="submitFrame" class="hidden"></iframe><script>
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>IEC V4.1 – Bài thi viết sáng</title>
+  <link rel="stylesheet" href="styles.css?v=20261006.2">
+  <script src="config.js?v=20261006.1"></script>
+  <script src="common.js?v=20261005.2"></script>
+</head>
+<body>
+<script>
+(function(){
+  if(qp('embed')==='1')return;
+  var u=new URL('index.html',location.href);
+  new URLSearchParams(location.search).forEach(function(v,k){u.searchParams.set(k,v)});
+  u.searchParams.set('view','exam');
+  u.searchParams.set('exam','morning');
+  location.replace(u.toString());
+})();
+</script>
+
+<div class="wrap">
+  <div class="card">
+    <h1>BÀI THI VIẾT SÁNG</h1>
+    <div id="morningRule" class="sub">TỪ MỚI + ĐỎ CŨ · phải đạt viết trước khi được thi nói</div>
+    <div id="meta" class="statusbar">Đang tải bài thi...</div>
+  </div>
+
+  <div id="testCard" class="card hidden">
+    <div class="section-head">
+      <div>
+        <h2 id="testTitle">Bài thi viết</h2>
+        <div class="muted">Nhập thuật ngữ tiếng Anh tương ứng. Viết đúng → VÀNG; viết chưa đúng → ĐỎ.</div>
+      </div>
+    </div>
+    <div id="questions"></div>
+    <button id="submitBtn">NỘP BÀI VIẾT</button>
+    <div id="msg" class="msg"></div>
+  </div>
+
+  <div id="resultCard" class="card hidden">
+    <h2>Kết quả lần thi</h2>
+    <div id="resultMsg" class="msg ok"></div>
+    <button id="nextBtn" class="hidden">THI LẦN TIẾP THEO</button>
+  </div>
+
+  <div id="doneCard" class="card hidden">
+    <h2>CA SÁNG ĐÃ HOÀN THÀNH</h2>
+    <div id="doneMsg" class="msg ok">Bài thi viết đã được lưu.</div>
+  </div>
+
+  <footer class="app-footer">Phát triển bởi TS. Ngô Ngọc Lân</footer>
+</div>
+
+<iframe name="submitFrame" class="hidden"></iframe>
+
+<script>
 let CTX,DATA;
-document.addEventListener('DOMContentLoaded',async()=>{window.addEventListener('message',handleMessage);startTest.onclick=startWrite;submitBtn.onclick=submitMorning;try{CTX=requireContext();await loadClientConfig();setupRates();setupTtsPresetSelect(voicePreset);await loadData()}catch(e){meta.textContent=String(e.message||e)}});
-function setupRates(){const rates=IEC_CONFIG.TTS_RATES&&IEC_CONFIG.TTS_RATES.length?IEC_CONFIG.TTS_RATES:[.5,.7,.85,1];rate.innerHTML='';rates.forEach(r=>{const o=document.createElement('option');o.value=r;o.textContent=Number(r).toFixed(2).replace(/0$/,'')+'×';if(Math.abs(Number(r)-Number(IEC_CONFIG.TTS_DEFAULT_RATE||.85))<.001)o.selected=true;rate.appendChild(o)})}
-async function loadData(){DATA=await jsonp(API_BASE+'?api=morning-data&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&run='+encodeURIComponent(CTX.runId)+'&token='+encodeURIComponent(CTX.token));if(!DATA||DATA.ok===false)throw new Error(DATA&&DATA.error||'Không tải được bài viết buổi sáng');meta.textContent='NGÀY '+DATA.run.programDay+' · '+DATA.count+' nội dung'; document.getElementById('morningRule').textContent=
-  'TỪ MỚI + ĐỎ CŨ · '+
-  Number(DATA.attempts&&DATA.attempts.max||1)+
-  ' lần thi mỗi ngày · phải đạt viết trước khi được thi nói'; if(DATA.completed){doneCard.classList.remove('hidden');return}renderStudy();studyCard.classList.remove('hidden')}
-function renderStudy(){studyList.innerHTML='';DATA.items.forEach((it,i)=>{const d=document.createElement('div');d.className='item';d.innerHTML='<div class="tag">'+String(i+1).padStart(2,'0')+' · '+(it.writeSource||'')+' · '+it.contentId+'</div><div class="vn"></div><div class="en"></div><div class="ipa"></div><div class="tts"><button class="secondary listen">🔊 Nghe</button><button class="secondary repeat">🔁 Nghe ×'+Number(IEC_CONFIG.TTS_REPEAT||3)+'</button></div>';d.querySelector('.vn').textContent=it.vietnamese;d.querySelector('.en').textContent=it.english;d.querySelector('.ipa').textContent=it.ipa||'';d.querySelector('.listen').onclick=()=>ttsSpeak(it.english,Number(rate.value),1);d.querySelector('.repeat').onclick=()=>ttsSpeak(it.english,Number(rate.value),Number(IEC_CONFIG.TTS_REPEAT||3));studyList.appendChild(d)})}
-function startWrite(){stopTts();studyCard.classList.add('hidden');testCard.classList.remove('hidden');questions.innerHTML='';DATA.items.forEach((it,i)=>{const r=document.createElement('div');r.className='test-row';r.innerHTML='<div class="num">'+String(i+1).padStart(2,'0')+'</div><div class="vn"></div><input type="text" autocomplete="off" placeholder="Nhập thuật ngữ tiếng Anh">';r.querySelector('.vn').textContent=it.vietnamese;r.querySelector('input').dataset.contentId=it.contentId;questions.appendChild(r)});questions.querySelector('input')?.focus()}
-function submitMorning(){const answers=[...questions.querySelectorAll('input')].map(x=>({contentId:x.dataset.contentId,answer:x.value.trim()}));submitBtn.disabled=true;setMsg(msg,'Đang lưu bài viết...');postPayload({api:'morning-submit',classId:CTX.classId,studentId:CTX.studentId,runId:CTX.runId,token:CTX.token,answers:answers,clientKey:clientKey('MORNING')})}
+
+function hideAll(){
+  testCard.classList.add('hidden');
+  resultCard.classList.add('hidden');
+  doneCard.classList.add('hidden');
+}
+async function loadData(){
+  hideAll();
+  meta.textContent='Đang tải bài thi...';
+
+  DATA=await jsonp(
+    API_BASE+'?api=morning-data&class='+encodeURIComponent(CTX.classId)+
+    '&student='+encodeURIComponent(CTX.studentId)+
+    '&run='+encodeURIComponent(CTX.runId)+
+    '&token='+encodeURIComponent(CTX.token)
+  );
+  if(!DATA||DATA.ok===false)throw new Error(DATA&&DATA.error||'Không tải được bài thi viết sáng');
+
+  const used=Number(DATA.attempts&&DATA.attempts.used||0);
+  const max=Number(DATA.attempts&&DATA.attempts.max||1);
+  const remaining=Number(DATA.attempts&&DATA.attempts.remaining||0);
+
+  morningRule.textContent=
+    'TỪ MỚI + ĐỎ CŨ · Tối đa '+max+
+    ' lần thi mỗi ngày · lần sau chỉ thi lại nội dung chưa đạt viết';
+
+  if(DATA.completed){
+    meta.textContent='NGÀY '+DATA.run.programDay+' · Đã dùng '+used+'/'+max+' lần thi';
+    doneMsg.textContent=DATA.message||'Không còn nội dung cần thi lại trong CA SÁNG.';
+    doneCard.classList.remove('hidden');
+    return;
+  }
+
+  meta.textContent=
+    'NGÀY '+DATA.run.programDay+
+    ' · Lần thi '+Math.min(max,used+1)+'/'+max+
+    ' · '+DATA.count+' nội dung';
+
+  renderWriteTest();
+}
+function renderWriteTest(){
+  questions.innerHTML='';
+  (DATA.items||[]).forEach(function(it,i){
+    const r=document.createElement('div');
+    r.className='test-row';
+    r.innerHTML=
+      '<div class="num">'+String(i+1).padStart(2,'0')+'</div>'+
+      '<div><div class="vn"></div><div class="tag"></div></div>'+
+      '<input type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Nhập thuật ngữ tiếng Anh">';
+    r.querySelector('.vn').textContent=it.vietnamese;
+    r.querySelector('.tag').textContent=(it.writeSource||'')+' · '+it.contentId;
+    r.querySelector('input').dataset.contentId=it.contentId;
+    questions.appendChild(r);
+  });
+
+  submitBtn.disabled=false;
+  submitBtn.textContent='NỘP BÀI VIẾT';
+  msg.textContent='';
+  testTitle.textContent=
+    'Bài thi viết · Lần '+Math.min(
+      Number(DATA.attempts&&DATA.attempts.max||1),
+      Number(DATA.attempts&&DATA.attempts.used||0)+1
+    );
+  testCard.classList.remove('hidden');
+  const first=questions.querySelector('input');
+  if(first)setTimeout(()=>first.focus(),50);
+}
+function submitMorning(){
+  const answers=[...questions.querySelectorAll('input')].map(function(x){
+    return {contentId:x.dataset.contentId,answer:x.value.trim()};
+  });
+
+  submitBtn.disabled=true;
+  setMsg(msg,'Đang lưu bài viết...');
+  postPayload({
+    api:'morning-submit',
+    classId:CTX.classId,
+    studentId:CTX.studentId,
+    runId:CTX.runId,
+    token:CTX.token,
+    answers:answers,
+    clientKey:clientKey('MORNING')
+  });
+}
+function showDone(text){
+  testCard.classList.add('hidden');
+  resultCard.classList.add('hidden');
+  doneMsg.textContent=text;
+  doneCard.classList.remove('hidden');
+}
 function handleMessage(e){
   const d=e.data;
   if(!d||typeof d!=='object'||d.ok===undefined)return;
@@ -27,39 +161,51 @@ function handleMessage(e){
   const used=Number(d.attempts&&d.attempts.used||0);
   const max=Number(d.attempts&&d.attempts.max||1);
   const remaining=Number(d.attempts&&d.attempts.remaining||0);
-
-  setMsg(
-    msg,
-    'Đã lưu lần thi '+used+'/'+max+
-    '. VÀNG='+Number(d.pass||0)+
-    ' · ĐỎ='+Number(d.repairNeeded||0)+'.',
-    'ok'
-  );
+  const red=Number(d.repairNeeded||0);
 
   [...questions.querySelectorAll('input')].forEach(x=>x.disabled=true);
   submitBtn.disabled=true;
+  submitBtn.textContent='ĐÃ LƯU';
 
-  if(remaining>0){
-    submitBtn.textContent='ĐÃ LƯU';
+  testCard.classList.add('hidden');
+  resultMsg.textContent=
+    'Đã lưu lần thi '+used+'/'+max+
+    ' · Đạt viết: '+Number(d.pass||0)+
+    ' · Còn ĐỎ: '+red+'.';
+  resultCard.classList.remove('hidden');
 
-    setTimeout(async()=>{
-      testCard.classList.add('hidden');
-      try{
-        await loadData();
-      }catch(err){
-        setMsg(msg,'LỖI: '+String(err.message||err),'err');
-      }
-    },600);
-
+  if(red>0&&remaining>0){
+    nextBtn.classList.remove('hidden');
+    nextBtn.disabled=false;
+    nextBtn.textContent='THI LẦN TIẾP THEO · CÒN '+red+' ĐỎ';
+    meta.textContent='NGÀY '+(DATA&&DATA.run?DATA.run.programDay:'')+
+      ' · Đã dùng '+used+'/'+max+' lần thi · Còn '+red+' nội dung ĐỎ';
     return;
   }
 
-  submitBtn.textContent='ĐÃ NỘP BÀI';
+  nextBtn.classList.add('hidden');
+  const text=red===0
+    ? 'Không còn nội dung ĐỎ. CA SÁNG đã hoàn thành.'
+    : 'Đã sử dụng hết '+max+' lần thi. Còn '+red+' nội dung ĐỎ để tiếp tục xử lý ở CA GIỮA NGÀY.';
+  setTimeout(()=>showDone(text),350);
+}
 
-  setTimeout(()=>{
-    testCard.classList.add('hidden');
-    doneMsg.textContent='Đã hoàn thành '+used+'/'+max+' lần thi trong ngày.';
-    doneCard.classList.remove('hidden');
-  },600);
-}</script></body></html>
-<!-- redeploy 20261006 -->
+document.addEventListener('DOMContentLoaded',async function(){
+  window.addEventListener('message',handleMessage);
+  submitBtn.onclick=submitMorning;
+  nextBtn.onclick=async function(){
+    nextBtn.disabled=true;
+    try{await loadData();}
+    catch(e){nextBtn.disabled=false;resultMsg.className='msg err';resultMsg.textContent='LỖI: '+String(e.message||e);}
+  };
+
+  try{
+    CTX=requireContext();
+    await loadData();
+  }catch(e){
+    meta.textContent='LỖI: '+String(e.message||e);
+  }
+});
+</script>
+</body>
+</html>
