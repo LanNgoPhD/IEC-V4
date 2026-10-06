@@ -46,7 +46,7 @@
           <em id="examMorningMeta">Đang tải...</em>
           <i class="mini-progress"><u id="examMorningBar"></u></i>
         </button>
-        <button class="exam-parent-card" onclick="showFrame('drill.html?examOnly=1','exam')">
+        <button id="examDrillCard" class="exam-parent-card" onclick="showFrame('drill.html?examOnly=1','exam')">
           <b>CA THI GIỮA NGÀY</b>
           <span>ĐỎ → VÀNG bằng thi viết · VÀNG → XANH BIỂN bằng thi nói</span>
           <em id="examDrillMeta">Đang tải...</em>
@@ -213,10 +213,53 @@ function middaySessionCardHtml(d){
 }
 function renderExamOverview(d){
   if(!d||!document.getElementById('examAttempts'))return;
-  examAttempts.textContent='CA SÁNG: '+d.morning.used+'/'+d.morning.maxAttempts+' · CA GIỮA NGÀY: viết '+d.drillWrite.used+'/'+d.drillWrite.max+', nói '+d.drillSpeak.used+'/'+d.drillSpeak.max+' · CA CUỐI NGÀY: '+d.final.used+'/'+d.final.maxAttempts;
-  examMorningMeta.textContent=attemptsText(d.morning.used,d.morning.maxAttempts,'lần')+' · '+uiState(d.morning.status);setBar(examMorningBar,d.morning.used,d.morning.maxAttempts);
-  examDrillMeta.textContent='Viết '+d.drillWrite.used+'/'+d.drillWrite.max+' · Nói '+d.drillSpeak.used+'/'+d.drillSpeak.max+' · còn '+d.counts.RED+' ĐỎ / '+d.counts.YELLOW+' VÀNG';setBar(examDrillBar,Math.max(d.drillWrite.used,d.drillSpeak.used),Math.max(d.drillWrite.max,d.drillSpeak.max));
-  examFinalMeta.textContent=attemptsText(d.final.used,d.final.maxAttempts,'lần')+' · '+finalPortalState(d.final);setBar(examFinalBar,d.final.used,d.final.maxAttempts);
+
+  examAttempts.textContent=
+    'CA SÁNG: '+d.morning.used+'/'+d.morning.maxAttempts+
+    ' · CA GIỮA NGÀY: viết '+d.drillWrite.used+'/'+d.drillWrite.max+
+    ', nói '+d.drillSpeak.used+'/'+d.drillSpeak.max+
+    ' · CA CUỐI NGÀY: '+d.final.used+'/'+d.final.maxAttempts;
+
+  examMorningMeta.textContent=
+    attemptsText(d.morning.used,d.morning.maxAttempts,'lần')+
+    ' · '+uiState(d.morning.status);
+  setBar(examMorningBar,d.morning.used,d.morning.maxAttempts);
+
+  examDrillMeta.textContent=
+    'Viết '+d.drillWrite.used+'/'+d.drillWrite.max+
+    ' · Nói '+d.drillSpeak.used+'/'+d.drillSpeak.max+
+    ' · còn '+d.counts.RED+' ĐỎ / '+d.counts.YELLOW+' VÀNG';
+  setBar(
+    examDrillBar,
+    Math.max(d.drillWrite.used,d.drillSpeak.used),
+    Math.max(d.drillWrite.max,d.drillSpeak.max)
+  );
+
+  examFinalMeta.textContent=
+    attemptsText(d.final.used,d.final.maxAttempts,'lần')+
+    ' · '+finalPortalState(d.final);
+  setBar(examFinalBar,d.final.used,d.final.maxAttempts);
+
+  // Khi CA CUỐI NGÀY đã mở thì CA GIỮA NGÀY phải đóng.
+  const finalStatus=String(d.final&&d.final.status||'').toUpperCase();
+  const finalUsed=Number(d.final&&d.final.used||0);
+  const finalOpened=
+    finalUsed>0 ||
+    ['STARTED','AWAIT_CLIP','COMPLETED','CLIP_MISSING','DONE'].includes(finalStatus);
+
+  const drillCard=document.getElementById('examDrillCard');
+  if(drillCard){
+    drillCard.disabled=finalOpened;
+    drillCard.style.opacity=finalOpened?'0.48':'';
+    drillCard.style.cursor=finalOpened?'not-allowed':'';
+    drillCard.onclick=finalOpened
+      ? null
+      : function(){showFrame('drill.html?examOnly=1','exam');};
+
+    if(finalOpened){
+      examDrillMeta.textContent='ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ';
+    }
+  }
 }
 async function openExamOverview(){
   showView('examView');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='exam'));
