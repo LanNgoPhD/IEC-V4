@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>IEC V4.1 – Luyện tập / Ca giữa ngày</title>
-  <link rel="stylesheet" href="styles.css?v=20261006.4">
+  <link rel="stylesheet" href="styles.css?v=20261006.5">
   <script src="config.js?v=20261006.1"></script>
   <script src="common.js?v=20261005.2"></script>
 </head>
@@ -249,7 +249,7 @@ const voicePresetSelect=document.getElementById('voicePreset');
 let dictationCurrent=null,dictationReplayRemaining=0;
 let wordIndex=0,writeIndex=0,writeOrder=[];
 let chainItems=[],chainIndex=0,chainRunToken=0,chainPlaying=false,chainCompleted=false;
-let activePracticePanel='word',activeExamPanel='write';
+let activePracticePanel='word',activeExamPanel='write',deepLinkApplied=false;
 
 function inheritClientConfig(){
   try{
@@ -325,6 +325,24 @@ function practiceSourceLabel(it){
   if((DATA&&DATA.newItems||[]).some(x=>x&&x.contentId===id))return 'TỪ MỚI';
   return 'ĐỎ CŨ';
 }
+
+function applyPracticeDeepLink(){
+  if(deepLinkApplied||EXAM_ONLY)return;
+  const wanted=String(qp('practice')||'').toLowerCase(),cid=String(qp('content')||'').trim();
+  const allowed=['word','chain','vietwrite','dictation'];
+  if(allowed.includes(wanted))activePracticePanel=wanted;
+  if(cid){
+    const items=allPracticeItems(),i=items.findIndex(function(x){return String(x&&x.contentId||'')===cid;});
+    if(i>=0){
+      wordIndex=i;
+      if(activePracticePanel==='vietwrite'){
+        const target=items[i],rest=items.filter(function(x){return String(x&&x.contentId||'')!==cid;});
+        writeOrder=[target].concat(rest);writeIndex=0;
+      }
+    }
+  }
+  deepLinkApplied=true;
+}
 function setPageHeader(){
   if(EXAM_ONLY){
     pageTitle.textContent='CA THI GIỮA NGÀY';
@@ -352,6 +370,7 @@ async function fetchData(){
 }
 function applyData(d){
   DATA=d;
+  if(!EXAM_ONLY)applyPracticeDeepLink();
   meta.textContent=
     'NGÀY '+DATA.run.programDay+
     ' · ĐỎ '+DATA.redCount+

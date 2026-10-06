@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://script.google.com">
   <link rel="preconnect" href="https://script.googleusercontent.com">
   <title>IEC V4.1</title>
-  <link rel="stylesheet" href="styles.css?v=20261006.4">
+  <link rel="stylesheet" href="styles.css?v=20261006.5">
   <script src="config.js?v=20261006.1"></script>
   <script src="common.js?v=20261005.2"></script>
 </head>
@@ -76,7 +76,7 @@
 <script>
 const ROLE=(qp('role')||'student').toLowerCase();
 const VIEW=(qp('view')||'info').toLowerCase();
-const UI_BUILD='20261006.4';
+const UI_BUILD='20261006.5';
 let CTX=null,STUDENT_INFO=null;
 window.IEC_V4_RUNTIME_CONFIG=null;
 window.IEC_V4_CONFIG_PROMISE=null;
@@ -111,7 +111,7 @@ function showFrame(page,tab){
 function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function uiState(s){
   const k=String(s||'').toUpperCase();
-  const m={RED:'ĐỎ',YELLOW:'VÀNG',BLUE:'XANH BIỂN',GREEN:'XANH LÁ',DONE:'ĐÃ HOÀN THÀNH',PENDING:'CHỜ',COMPLETED:'ĐÃ HOÀN THÀNH',RETRY:'CÒN ĐỎ – CÓ THỂ THI LẠI',MAX_ATTEMPTS:'ĐÃ HẾT LẦN THI',AWAIT_CLIP:'CHỜ VIDEO',CLIP_MISSING:'THIẾU VIDEO',MISSED:'BỎ LỠ',STARTED:'ĐANG THI',NOT_STARTED:'CHƯA BẮT ĐẦU','N/A':'—'};
+  const m={RED:'ĐỎ',YELLOW:'VÀNG',BLUE:'XANH BIỂN',GREEN:'XANH LÁ',DONE:'ĐÃ HOÀN THÀNH',PENDING:'CHỜ',COMPLETED:'ĐÃ HOÀN THÀNH',RETRY:'CÒN ĐỎ – CÓ THỂ THI LẠI',MAX_ATTEMPTS:'ĐÃ HẾT LẦN THI',RETRY_FINAL:'CÒN VÀNG – CÓ THỂ THI LẠI',AWAIT_CLIP:'CHỜ VIDEO',CLIP_MISSING:'THIẾU VIDEO',MISSED:'BỎ LỠ',STARTED:'ĐANG THI',NOT_STARTED:'CHƯA BẮT ĐẦU','N/A':'—'};
   return m[k]||viState(s);
 }
 function clamp(n,a,b){n=Number(n||0);return Math.max(a,Math.min(b,n));}
@@ -119,6 +119,42 @@ function percent(a,b){a=Number(a||0);b=Number(b||0);return b>0?Math.round(a*100/
 function formatDateVN(s){const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?m[3]+'/'+m[2]+'/'+m[1]:(s||'—');}
 function attemptsText(used,max,label){used=Number(used||0);max=Number(max||0);return 'Đã thi '+used+'/'+max+' '+(label||'lần')+' · còn '+Math.max(0,max-used)+' lần';}
 function setBar(el,used,max){if(el)el.style.width=clamp(percent(used,max),0,100)+'%';}
+function finalPortalState(f){
+  f=f||{};const k=String(f.status||'').toUpperCase();
+  if(k==='AWAIT_CLIP')return f.awaitingClip?'CHỜ VIDEO':'ĐÃ HOÀN THÀNH';
+  return uiState(k);
+}
+function dayMorningState(x){
+  const a=x&&x.morningAttempts||null;
+  if(a&&Number(a.max||0)>0){const used=Number(a.used||0),max=Number(a.max||0),remaining=Math.max(0,Number(a.remaining!=null?a.remaining:max-used));return 'ĐÃ THI '+used+'/'+max+' · CÒN '+remaining+' LẦN';}
+  return uiState(x&&x.morningStatus);
+}
+function dayFinalState(x){
+  const k=String(x&&x.finalStatus||'').toUpperCase(),v=String(x&&x.videoStatus||'').toUpperCase();
+  if(k==='AWAIT_CLIP')return v==='PENDING'?'CHỜ VIDEO':'ĐÃ HOÀN THÀNH';
+  return uiState(k);
+}
+function difficultSorted(items,mode){
+  const out=(items||[]).slice();
+  function redDay(x){const n=Number(x.redSinceDay||0);return n>0?n:999999;}
+  function lastDay(x){const n=Number(x.lastProgramDay||0);return n>0?n:999999;}
+  out.sort(function(a,b){
+    const aw=Number(a.wrongCount||0),bw=Number(b.wrongCount||0),ar=redDay(a),br=redDay(b),al=lastDay(a),bl=lastDay(b);
+    if(mode==='old'){if(ar!==br)return ar-br;if(aw!==bw)return bw-aw;return al-bl;}
+    if(mode==='wrong'){if(aw!==bw)return bw-aw;if(ar!==br)return ar-br;return al-bl;}
+    if(aw!==bw)return bw-aw;if(ar!==br)return ar-br;return al-bl;
+  });
+  return out;
+}
+function difficultRowsHtml(items){
+  if(!items.length)return '<div class="msg ok">Hiện không có nội dung ĐỎ cần cải thiện.</div>';
+  return items.map(function(x){
+    return '<div class="difficult-item red">'+
+      '<div class="difficult-word"><b class="difficult-vn">'+esc(x.vietnamese||x.contentId)+'</b><span class="difficult-en">'+esc(x.english||'')+'</span></div>'+
+      '<div class="difficult-meta">Sai '+Number(x.wrongCount||0)+' lần · ĐỎ từ Ngày '+(Number(x.redSinceDay||0)>0?Number(x.redSinceDay):'—')+'</div>'+
+      '<button class="secondary small" data-go-practice="1" data-content-id="'+esc(x.contentId||'')+'">ĐI LUYỆN NGAY</button></div>';
+  }).join('');
+}
 
 async function loadStudentInfo(force){
   if(STUDENT_INFO&&!force){renderStudentInfo(STUDENT_INFO);return STUDENT_INFO;}
@@ -158,7 +194,7 @@ function renderStudentInfo(d){
     '<section class="card"><h2>CÁC CA HÔM NAY</h2><div class="session-cards">'+
       sessionCardHtml('CA SÁNG','THI VIẾT',d.morning.used,d.morning.maxAttempts,uiState(d.morning.status))+
       middaySessionCardHtml(d)+
-      sessionCardHtml('CA CUỐI NGÀY','THI NÓI',d.final.used,d.final.maxAttempts,uiState(d.final.status))+
+      sessionCardHtml('CA CUỐI NGÀY','THI NÓI',d.final.used,d.final.maxAttempts,finalPortalState(d.final))+
     '</div></section>'+
     '<section class="card ta-wait-card"><h2>TRỢ GIẢNG ĐANG ĐÁNH GIÁ</h2><div class="ta-wait-number">'+Number(d.reviewWaiting||0)+' <span>XANH LÁ</span></div><div class="sub">'+(d.reviewWaiting?'Đã nộp và đang chờ xét duyệt. ĐẠT → XANH BIỂN · CHƯA ĐẠT → VÀNG.':'Không có nội dung đang chờ trợ giảng.')+'</div></section>'+
     '<section class="card"><h2>LỊCH HÔM NAY</h2><div class="day-timeline"><div><b>CA SÁNG</b><span>Từ '+esc(d.run.morningOpen||'—')+'</span></div><div><b>CA THI GIỮA NGÀY</b><span>Sau CA SÁNG → trước '+esc(d.run.finalOpen||'—')+'</span></div><div><b>CA CUỐI NGÀY</b><span>Từ '+esc(d.run.finalOpen||'—')+' · bắt đầu trước '+esc(d.run.finalDeadline||'—')+'</span></div><div><b>VIDEO</b><span>Hạn '+esc(d.run.clipDeadline||'—')+'</span></div></div></section>'+
@@ -180,7 +216,7 @@ function renderExamOverview(d){
   examAttempts.textContent='CA SÁNG: '+d.morning.used+'/'+d.morning.maxAttempts+' · CA GIỮA NGÀY: viết '+d.drillWrite.used+'/'+d.drillWrite.max+', nói '+d.drillSpeak.used+'/'+d.drillSpeak.max+' · CA CUỐI NGÀY: '+d.final.used+'/'+d.final.maxAttempts;
   examMorningMeta.textContent=attemptsText(d.morning.used,d.morning.maxAttempts,'lần')+' · '+uiState(d.morning.status);setBar(examMorningBar,d.morning.used,d.morning.maxAttempts);
   examDrillMeta.textContent='Viết '+d.drillWrite.used+'/'+d.drillWrite.max+' · Nói '+d.drillSpeak.used+'/'+d.drillSpeak.max+' · còn '+d.counts.RED+' ĐỎ / '+d.counts.YELLOW+' VÀNG';setBar(examDrillBar,Math.max(d.drillWrite.used,d.drillSpeak.used),Math.max(d.drillWrite.max,d.drillSpeak.max));
-  examFinalMeta.textContent=attemptsText(d.final.used,d.final.maxAttempts,'lần')+' · '+uiState(d.final.status);setBar(examFinalBar,d.final.used,d.final.maxAttempts);
+  examFinalMeta.textContent=attemptsText(d.final.used,d.final.maxAttempts,'lần')+' · '+finalPortalState(d.final);setBar(examFinalBar,d.final.used,d.final.maxAttempts);
 }
 async function openExamOverview(){
   showView('examView');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='exam'));
@@ -207,20 +243,43 @@ function renderResults(d){
   const s=d.summary||{},days=d.days||[],core=Math.max(Number(s.coreTotal||0),Number(s.learned||0)),coursePct=percent(s.blue,core),need=Number(s.red||0)+Number(s.yellow||0);
   const first=days[0]||{},last=days[days.length-1]||{};
   let dayHtml='';
-  days.slice().reverse().forEach(function(x){const learned=Number(x.learned||0),done=Number(x.blue||0),p=percent(done,learned);dayHtml+='<details class="result-day"><summary><div><b>NGÀY '+x.programDay+'</b><span>'+(x.date?formatDateVN(x.date)+' · ':'')+'Đã học '+learned+' · XANH BIỂN '+done+'</span></div><strong>'+p+'%</strong></summary><div class="result-day-body"><div class="state-mini"><span class="red">ĐỎ '+x.red+'</span><span class="yellow">VÀNG '+x.yellow+'</span><span class="green">XANH LÁ '+x.green+'</span><span class="blue">XANH BIỂN '+x.blue+'</span></div><div class="mini-progress"><u style="width:'+p+'%"></u></div><div class="history-sessions"><span>CA SÁNG: '+esc(uiState(x.morningStatus))+'</span><span>CA GIỮA: '+esc(uiState(x.drillStatus))+'</span><span>CA CUỐI: '+esc(uiState(x.finalStatus))+'</span></div></div></details>';});
-  let difficult='';(d.difficult||[]).forEach(function(x){const state=String(x.state||'');difficult+='<div class="difficult-item '+(state==='RED'?'red':'yellow')+'"><div><b>'+esc(x.english||x.vietnamese||x.contentId)+'</b><span>'+esc(x.vietnamese||'')+'</span></div><div class="difficult-meta">'+(state==='RED'?'ĐỎ – chưa đạt viết':'VÀNG – chưa đạt nói')+(x.wrongCount?' · sai '+x.wrongCount+' lần':'')+(x.redSinceDay?' · từ Ngày '+x.redSinceDay:'')+'</div><button class="secondary small" data-go-practice="1">ĐI LUYỆN</button></div>';});
-  if(!difficult)difficult='<div class="msg ok">Hiện không có nội dung ĐỎ/VÀNG cần cải thiện.</div>';
+  days.slice().reverse().forEach(function(x){
+    const learned=Number(x.learned||0),done=Number(x.blue||0),p=percent(done,learned);
+    dayHtml+='<details class="result-day"><summary><div><b>NGÀY '+x.programDay+'</b><span>'+(x.date?formatDateVN(x.date)+' · ':'')+'Đã học '+learned+' · XANH BIỂN '+done+'</span></div><strong>'+p+'%</strong></summary><div class="result-day-body"><div class="state-mini"><span class="red">ĐỎ '+x.red+'</span><span class="yellow">VÀNG '+x.yellow+'</span><span class="green">XANH LÁ '+x.green+'</span><span class="blue">XANH BIỂN '+x.blue+'</span></div><div class="mini-progress"><u style="width:'+p+'%"></u></div><div class="history-sessions"><span>CA SÁNG: '+esc(dayMorningState(x))+'</span><span>CA GIỮA: '+esc(uiState(x.drillStatus))+'</span><span>CA CUỐI: '+esc(dayFinalState(x))+'</span></div></div></details>';
+  });
+
+  const redItems=(d.difficult||[]).filter(function(x){return String(x.state||'').toUpperCase()==='RED';});
   let reviews='';(d.reviews||[]).forEach(function(x){const blue=String(x.result||'').toUpperCase()==='BLUE';reviews+='<div class="review-item"><div><b>'+esc(x.word)+'</b><span>Ngày '+x.programDay+'</span></div><strong class="'+(blue?'resultBlue':'resultYellow')+'">'+(blue?'ĐẠT → XANH BIỂN':'CHƯA ĐẠT → VÀNG')+'</strong><p>'+esc(x.comment||x.error||'Không có nhận xét bổ sung.')+'</p></div>';});
   if(!reviews)reviews='<div class="msg">Chưa có đánh giá đã hoàn tất của trợ giảng.</div>';
+
   resultBody.className='dashboard-stack';
   resultBody.innerHTML='<section class="card page-intro"><h2>KẾT QUẢ & TIẾN ĐỘ</h2><div class="sub">Theo dõi sự tiến bộ từ đầu khóa, nội dung còn yếu và các đánh giá đã hoàn tất.</div></section>'+ 
     '<section class="card"><h2>TIẾN ĐỘ HỌC TẬP TOÀN KHÓA</h2><div class="course-result-kpis"><div><span>Đã học</span><b>'+Number(s.learned||0)+'</b></div><div><span>XANH BIỂN</span><b>'+Number(s.blue||0)+'</b></div><div><span>Cần cải thiện</span><b>'+need+'</b></div><div><span>TA đã xét</span><b>'+Number((d.reviews||[]).length)+'</b></div></div><div class="course-progress-line"><div><span>Hoàn thành nội dung toàn khóa</span><b>'+Number(s.blue||0)+' / '+core+' · '+coursePct+'%</b></div><div class="big-progress"><u style="width:'+coursePct+'%"></u></div></div></section>'+ 
     '<section class="card"><h2>BIỂU ĐỒ TIẾN BỘ THEO NGÀY</h2><div class="sub">Mục tiêu: ĐỎ giảm dần và XANH BIỂN tăng dần.</div>'+chartSvg(days)+'</section>'+ 
     '<section class="card"><h2>NHẬN XÉT TIẾN BỘ</h2><div class="progress-notes"><span>XANH BIỂN: <b>'+Number(first.blue||0)+' → '+Number(last.blue||0)+'</b></span><span>ĐỎ: <b>'+Number(first.red||0)+' → '+Number(last.red||0)+'</b></span><span>Ngày đã tham gia: <b>'+days.length+'</b></span></div></section>'+ 
     '<section class="card"><h2>KẾT QUẢ TỪNG NGÀY</h2><div class="sub">Bấm từng ngày để xem chi tiết; không cần kéo qua một bảng dài.</div><div class="result-days">'+(dayHtml||'<div class="msg">Chưa có lịch sử ngày học.</div>')+'</div></section>'+ 
-    '<section class="card"><h2>ĐIỂM CẦN CẢI THIỆN</h2><div class="sub">Ưu tiên nội dung sai nhiều hoặc tồn lâu.</div><div class="difficult-list">'+difficult+'</div></section>'+ 
+    '<section class="card"><h2>ĐIỂM CẦN CẢI THIỆN</h2><div class="sub">Mặc định hiển thị 5 nội dung ĐỎ ưu tiên nhất: sai nhiều → ĐỎ lâu → cũ hơn.</div><div id="difficultFilters" class="difficult-toolbar hidden"><button class="secondary small active" data-difficult-sort="priority">ƯU TIÊN</button><button class="secondary small" data-difficult-sort="wrong">SAI NHIỀU</button><button class="secondary small" data-difficult-sort="old">ĐỎ LÂU</button></div><div id="difficultList" class="difficult-list"></div><div id="difficultFooter" class="difficult-footer"></div></section>'+ 
     '<section class="card"><h2>ĐÁNH GIÁ CỦA TRỢ GIẢNG</h2><div class="sub">Chỉ hiển thị các trường hợp trợ giảng đã xét xong.</div><div class="review-list">'+reviews+'</div></section>';
-  resultBody.onclick=function(e){const b=e.target.closest('[data-go-practice]');if(b)showFrame('drill.html','frame');};
+
+  let expanded=false,sortMode='priority';
+  function renderDifficult(){
+    const sorted=difficultSorted(redItems,sortMode),shown=expanded?sorted:sorted.slice(0,5);
+    difficultList.innerHTML=difficultRowsHtml(shown);
+    difficultFilters.classList.toggle('hidden',!expanded||redItems.length<=5);
+    difficultFilters.querySelectorAll('[data-difficult-sort]').forEach(function(b){b.classList.toggle('active',b.dataset.difficultSort===sortMode);});
+    if(redItems.length>5)difficultFooter.innerHTML='<button class="secondary difficult-toggle" data-difficult-toggle="1">'+(expanded?'THU GỌN':'XEM TẤT CẢ '+redItems.length+' NỘI DUNG ĐỎ')+'</button>';
+    else difficultFooter.innerHTML='';
+  }
+  renderDifficult();
+
+  resultBody.onclick=function(e){
+    const go=e.target.closest('[data-go-practice]');
+    if(go){const cid=String(go.dataset.contentId||'');showFrame('drill.html?practice=vietwrite&content='+encodeURIComponent(cid),'frame');return;}
+    const toggle=e.target.closest('[data-difficult-toggle]');
+    if(toggle){expanded=!expanded;renderDifficult();return;}
+    const sort=e.target.closest('[data-difficult-sort]');
+    if(sort){sortMode=sort.dataset.difficultSort||'priority';renderDifficult();}
+  };
 }
 
 function buildStudentNav(){

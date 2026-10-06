@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>IEC V4.1 – Bài thi viết sáng</title>
-  <link rel="stylesheet" href="styles.css?v=20261006.4">
+  <link rel="stylesheet" href="styles.css?v=20261006.5">
   <script src="config.js?v=20261006.1"></script>
   <script src="common.js?v=20261005.2"></script>
 </head>
@@ -80,9 +80,7 @@ async function loadData(){
   const max=Number(DATA.attempts&&DATA.attempts.max||0);
   const remaining=Number(DATA.attempts&&DATA.attempts.remaining||0);
 
-  morningRule.textContent=
-    'TỪ MỚI + ĐỎ CŨ · Tối đa '+max+
-    ' lần thi mỗi ngày · lần sau chỉ thi lại nội dung chưa đạt viết';
+  morningRule.textContent='TỪ MỚI + ĐỎ CŨ · lần sau chỉ thi lại nội dung chưa đạt viết';
 
   if(DATA.completed){
     meta.textContent='NGÀY '+DATA.run.programDay+' · Đã dùng '+used+'/'+max+' lần thi';
@@ -120,7 +118,7 @@ function renderWriteTest(){
     'Bài thi viết · Lần '+Math.min(
       Number(DATA.attempts&&DATA.attempts.max||0),
       Number(DATA.attempts&&DATA.attempts.used||0)+1
-    );
+    )+'/'+Number(DATA.attempts&&DATA.attempts.max||0);
   testCard.classList.remove('hidden');
   const first=questions.querySelector('input');
   if(first)setTimeout(()=>first.focus(),50);
