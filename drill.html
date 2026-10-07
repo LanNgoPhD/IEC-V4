@@ -243,6 +243,11 @@
 
 <script>
 let CTX,DATA,activePost='';
+
+function vietnameseText_(item){
+  const value=item&&(item.vietnamese!=null?item.vietnamese:item.VIETNAMESE);
+  return String(value==null?'':value).trim();
+}
 const EXAM_ONLY=qp('examOnly')==='1';
 const rateSelect=document.getElementById('rate');
 const voicePresetSelect=document.getElementById('voicePreset');
@@ -450,7 +455,7 @@ function renderWordPanel(){
   const it=items[wordIndex];
   wordProgress.textContent=(wordIndex+1)+'/'+items.length;
   wordTag.textContent=practiceSourceLabel(it)+' · '+(it.contentId||'');
-  wordVn.textContent=it.vietnamese||'';
+  wordVn.textContent=vietnameseText_(it);
   wordEn.textContent=it.english||'';
   wordIpa.textContent=it.ipa||'';
   wordPrev.disabled=wordFirst.disabled=wordIndex<=0;
@@ -526,7 +531,7 @@ function renderChainPanel(){
   chainProgress.textContent=(chainIndex+1)+'/'+chainItems.length;
   chainRule.textContent='Cụm gồm '+chainItems.length+' mục · khoảng nghỉ '+configuredChainGap()+' giây · cụm được giữ nguyên cho tới khi bấm CỤM MỚI.';
   chainTag.textContent=practiceSourceLabel(it)+' · '+(it.contentId||'');
-  chainVn.textContent=it.vietnamese||'';
+  chainVn.textContent=vietnameseText_(it);
   chainEn.textContent=it.english||'';
   chainIpa.textContent=it.ipa||'';
   chainFirst.disabled=chainPrev.disabled=chainIndex<=0;
@@ -644,7 +649,7 @@ function renderVietWritePanel(){
   const it=writeOrder[writeIndex];
   vietwriteProgress.textContent=(writeIndex+1)+'/'+writeOrder.length;
   vietwriteTag.textContent=practiceSourceLabel(it)+' · '+(it.contentId||'');
-  vietwriteVn.textContent=it.vietnamese||'';
+  vietwriteVn.textContent=vietnameseText_(it);
   vietwriteInput.dataset.contentId=it.contentId||'';
   vietwriteInput.value='';
   vietwriteInput.disabled=false;
@@ -789,7 +794,7 @@ function startWrite(){
       '<div class="num">'+String(i+1).padStart(2,'0')+'</div>'+
       '<div class="vn"></div>'+
       '<input type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Nhập thuật ngữ tiếng Anh">';
-    r.querySelector('.vn').textContent=it.vietnamese;
+    r.querySelector('.vn').textContent=vietnameseText_(it);
     r.querySelector('input').dataset.contentId=it.contentId;
     writeQuestions.appendChild(r);
   });
@@ -857,7 +862,7 @@ function checkDictation(){
   opts.forEach(function(x){
     const b=document.createElement('button');
     b.className='secondary meaningChoice';
-    b.textContent=x.vietnamese;
+    b.textContent=vietnameseText_(x);
     b.onclick=function(){
       if(x.contentId===dictationCurrent.contentId){
         setMsg(dictationMsg,'ĐÚNG · hoàn thành một lượt CHÍNH TẢ.','ok');
@@ -963,7 +968,7 @@ async function startSpeakTest(){
       {
         beforeWord:(w,i,n)=>{
           speakProgress.textContent=(i+1)+' / '+n;
-          speakPrompt.textContent=w.vietnamese;
+          speakPrompt.textContent=vietnameseText_(w);
           speakStatus.textContent='CHUẨN BỊ';
           speakHeard.textContent='---';
           speakTimer.textContent='';
