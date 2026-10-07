@@ -44,7 +44,7 @@
   <div id="resultCard" class="card hidden">
     <h2>KẾT QUẢ</h2>
     <div id="resultSummary" class="msg"></div>
-    <div class="muted">XANH LÁ là trạng thái chờ trợ giảng xét duyệt; lỗi nói không tự chuyển thành ĐỎ.</div>
+    <div class="muted">CA CUỐI chỉ có XANH BIỂN, XANH LÁ và VÀNG; không tạo trạng thái ĐỎ.</div>
   </div>
 
   <div id="clipBox" class="card hidden">
@@ -251,8 +251,14 @@ async function startFinal(){
       }
     );
 
+    // UX/PERFORMANCE: hiện ô KẾT QUẢ ngay khi phần nói kết thúc.
+    // Số liệu chính thức vẫn chỉ lấy từ backend sau khi lưu thành công.
+    testCard.classList.add('hidden');
+    resultCard.classList.remove('hidden');
+    resultSummary.className='msg';
+    resultSummary.textContent='Đang lưu và cập nhật kết quả...';
     activePost='FINAL';
-    setMsg(submitMsg,'Đang lưu bài thi nói cuối...');
+    setMsg(topMsg,'Đang lưu và cập nhật kết quả...');
     postPayload({
       api:'final-submit',
       classId:CTX.classId,studentId:CTX.studentId,runId:CTX.runId,token:CTX.token,
@@ -266,8 +272,7 @@ async function startFinal(){
 function resultText(d){
   return 'XANH BIỂN – Đã hoàn thành: '+Number(d.blue||0)+
     ' · XANH LÁ – Chờ trợ giảng xét duyệt: '+Number(d.green||0)+
-    ' · VÀNG – Chưa đạt thi nói: '+Number(d.yellow||0)+
-    ' · ĐỎ – Chưa đạt thi viết: '+Number(d.red||0)+'.';
+    ' · VÀNG – Chưa đạt thi nói: '+Number(d.yellow||0)+'.';
 }
 function showSubmitted(d){
   resultCard.classList.remove('hidden');
@@ -339,8 +344,13 @@ function handleBackend(e){
       clipBtn.disabled=false;
       clipUrl.readOnly=false;
       clipBtn.textContent='NỘP LIÊN KẾT VIDEO';
+      setMsg(submitMsg,'LỖI HỆ THỐNG: '+String(d.error||'Không xác định'),'err');
+    }else if(activePost==='FINAL'){
+      setMsg(topMsg,'LỖI HỆ THỐNG: '+String(d.error||'Không xác định'),'err');
+      resultCard.classList.remove('hidden');
+      resultSummary.className='msg err';
+      resultSummary.textContent='Không lưu được kết quả. Lượt thi chưa được xác nhận.';
     }
-    setMsg(submitMsg,'LỖI HỆ THỐNG: '+String(d.error||'Không xác định'),'err');
     return;
   }
 
@@ -352,6 +362,7 @@ function handleBackend(e){
   }
 
   if(activePost==='FINAL'){
+    topMsg.textContent='';
     resultCard.classList.remove('hidden');
     resultSummary.className='msg ok';
     resultSummary.textContent=resultText(d);
@@ -368,7 +379,7 @@ function handleBackend(e){
         ' · Còn '+yellow+' từ VÀNG';
 
       setMsg(
-        submitMsg,
+        topMsg,
         'Đã lưu lần thi '+used+'/'+max+
         ' · Còn '+yellow+' từ VÀNG. Bạn có thể thi lần tiếp theo.',
         'ok'
@@ -389,7 +400,7 @@ function handleBackend(e){
       'NGÀY '+DATA.run.programDay+
       ' · Đã dùng '+used+'/'+max+' lần thi · ĐÃ KẾT THÚC';
 
-    setMsg(submitMsg,'Bài thi nói cuối đã hoàn thành.','ok');
+    setMsg(topMsg,'Bài thi nói cuối đã hoàn thành.','ok');
     startBtn.classList.add('hidden');
     testCard.classList.add('hidden');
 
