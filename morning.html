@@ -59,6 +59,11 @@
 <script>
 let CTX,DATA;
 
+function vietnameseText_(item){
+  const value=item&&(item.vietnamese!=null?item.vietnamese:item.VIETNAMESE);
+  return String(value==null?'':value).trim();
+}
+
 function hideAll(){
   testCard.classList.add('hidden');
   resultCard.classList.add('hidden');
@@ -105,7 +110,7 @@ function renderWriteTest(){
       '<div class="num">'+String(i+1).padStart(2,'0')+'</div>'+
       '<div><div class="vn"></div><div class="tag"></div></div>'+
       '<input type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Nhập thuật ngữ tiếng Anh">';
-    r.querySelector('.vn').textContent=it.vietnamese;
+    r.querySelector('.vn').textContent=vietnameseText_(it);
     r.querySelector('.tag').textContent=(it.writeSource||'')+' · '+it.contentId;
     r.querySelector('input').dataset.contentId=it.contentId;
     questions.appendChild(r);
