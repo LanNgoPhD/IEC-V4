@@ -94,7 +94,7 @@
 <script>
 const ROLE=(qp('role')||'student').toLowerCase();
 const VIEW=(qp('view')||'info').toLowerCase();
-const UI_BUILD='20261007.8';
+const UI_BUILD='20261007.9';
 let CTX=null,STUDENT_INFO=null,PRACTICE_TAB=null,FINAL_LOCK_STATE=null;
 window.IEC_V4_RUNTIME_CONFIG=null;
 window.IEC_V4_CONFIG_PROMISE=null;
@@ -143,28 +143,40 @@ function clockMinutes(s){
   const h=Number(m[1]),min=Number(m[2]);
   return h>=0&&h<24&&min>=0&&min<60?h*60+min:null;
 }
-function vietnamNowMinutes(){
+function vietnamClockParts(nowValue){
+  const n=nowValue instanceof Date?nowValue:new Date();
   try{
-    const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());
-    let h=Number((parts.find(x=>x.type==='hour')||{}).value||0);
-    const m=Number((parts.find(x=>x.type==='minute')||{}).value||0);
-    if(h===24)h=0;
-    return h*60+m;
+    const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(n);
+    const get=t=>String((parts.find(x=>x.type===t)||{}).value||'');
+    let h=Number(get('hour')||0);if(h===24)h=0;
+    return {dateKey:get('year')+'-'+get('month')+'-'+get('day'),minutes:h*60+Number(get('minute')||0)};
   }catch(e){
-    const n=new Date();return n.getHours()*60+n.getMinutes();
+    return {dateKey:String(n.getFullYear()).padStart(4,'0')+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'),minutes:n.getHours()*60+n.getMinutes()};
   }
 }
-function isFinalWindowOpen(d){
+function vietnamNowMinutes(nowValue){return vietnamClockParts(nowValue).minutes;}
+function runDateKey(run){
+  run=run||{};
+  const direct=String(run.calendarDate||'').trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(direct))return direct;
+  const m=String(run.runId||(CTX&&CTX.runId)||'').match(/-(\d{4})(\d{2})(\d{2})$/);
+  return m?m[1]+'-'+m[2]+'-'+m[3]:'';
+}
+function isFinalWindowOpen(d,nowValue){
   d=d||{};
-  const f=d.final||{},run=d.run||{};
-  const finalStatus=String(f.status||'').toUpperCase();
+  const run=d.run||{};
   const runStatus=String(run.status||'').toUpperCase();
-  const finalUsed=Number(f.used||0);
-  if(finalUsed>0)return true;
-  if(['STARTED','AWAIT_CLIP','COMPLETED','CLIP_MISSING','DONE','RETRY_FINAL','MAX_ATTEMPTS','MISSED'].includes(finalStatus))return true;
   if(runStatus==='CLOSED')return true;
+
+  // QUY TẮC DUY NHẤT: khóa các ca trước theo CỬA THỜI GIAN của RUN,
+  // không theo lịch sử đã thi FINAL. Một lượt FINAL cũ không được phép khóa vĩnh viễn
+  // nếu giáo viên điều chỉnh FINAL_OPEN của chính RUN về một thời điểm tương lai.
+  const clock=vietnamClockParts(nowValue),rDate=runDateKey(run);
+  if(rDate&&rDate<clock.dateKey)return true;
+  if(rDate&&rDate>clock.dateKey)return false;
+
   const openMin=clockMinutes(run.finalOpen);
-  return openMin!=null&&vietnamNowMinutes()>=openMin;
+  return openMin!=null&&clock.minutes>=openMin;
 }
 function showFinalClosedNotice(){
   const modal=document.getElementById('finalClosedModal');
@@ -215,20 +227,13 @@ function applyFinalWindowLocks(d){
   return locked;
 }
 async function openBeforeFinal(page,tab){
-  // Khi trạng thái khóa đã biết, xử lý hoàn toàn tại máy: không gọi API, không chờ mạng.
-  if(FINAL_LOCK_STATE===true){
-    showFinalClosedNotice();
-    return false;
-  }
-  if(FINAL_LOCK_STATE===false){
-    showFrame(page,tab);
-    return true;
-  }
   try{
-    // Chỉ ở lần tải đầu tiên, khi chưa biết trạng thái, mới cần lấy student-info.
+    // Không chốt (latch) TRUE/FALSE từ lần tải trước. Mỗi lần bấm đều tính lại ngay
+    // từ FINAL_OPEN hiện có trong STUDENT_INFO; vì vậy trang mở từ trước 17:00 vẫn tự khóa
+    // khi qua 17:00, còn RUN test đổi FINAL_OPEN về tương lai sẽ mở lại sau khi refresh.
     const d=STUDENT_INFO || await loadStudentInfo(true);
-    applyFinalWindowLocks(d);
-    if(FINAL_LOCK_STATE===true){
+    const locked=applyFinalWindowLocks(d);
+    if(locked){
       showFinalClosedNotice();
       return false;
     }
