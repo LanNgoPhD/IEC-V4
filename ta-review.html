@@ -56,7 +56,7 @@ function submitDecision(decision){
   if(!QUEUE.length)return;
   const x=QUEUE.shift(),com=comment.value.trim();DECIDED_LOCAL++;
   SAVE_QUEUE.push({task:x,decision:decision,comment:com,postId:''});
-  setPersistentMsg('Đã nhận quyết định · đang lưu nền '+pendingSaveCount()+' mục.','ok');
+  setPersistentMsg('ĐÃ GHI NHẬN TRÊN MÀN HÌNH · đang lưu nền '+pendingSaveCount()+' mục. Chỉ đóng trang khi hiện ĐÃ LƯU XONG.','ok');
   render();drainSaveQueue();
 }
 
@@ -83,7 +83,7 @@ function handleMessage(e){
     render();drainSaveQueue();return;
   }
   QUEUE_META.readyCount=Math.max(0,QUEUE_META.readyCount-1);QUEUE_META.waitingTotal=Math.max(0,QUEUE_META.waitingTotal-1);
-  if(SAVE_ERRORS===0)setPersistentMsg(pendingSaveCount()?'Đã lưu · còn '+pendingSaveCount()+' quyết định đang lưu nền.':'Đã lưu xong các quyết định.','ok');
+  if(SAVE_ERRORS===0)setPersistentMsg(pendingSaveCount()?'Đã lưu · còn '+pendingSaveCount()+' quyết định đang lưu nền.':'ĐÃ LƯU XONG · có thể đóng/chuyển trang.','ok');
   updateMeta();render();drainSaveQueue();
 }
 </script></body></html>
