@@ -265,3 +265,6 @@ button,.btn{font-size:15px;font-weight:650}
 @media(max-width:460px){
   .status-kpis,.course-result-kpis{grid-template-columns:1fr}.practice-level-parent,.practice-level-child,.exam-child-nav{grid-template-columns:1fr}.practice-level-parent button{min-height:54px}.today-completion{flex-direction:column;align-items:center;text-align:center}.portal-tabs button{min-width:46%}
 }
+
+/* IEC V4.1 TA semantic action color */
+button.blueAction{background:#2563eb!important;color:#fff!important}
