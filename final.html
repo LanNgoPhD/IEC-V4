@@ -43,8 +43,7 @@
 
   <div id="resultCard" class="card hidden">
     <h2>KẾT QUẢ</h2>
-    <div id="resultSummary" class="msg"></div>
-    <div class="muted">CA CUỐI chỉ có XANH BIỂN, XANH LÁ và VÀNG; không tạo trạng thái ĐỎ.</div>
+    <div id="resultSummary"></div>
   </div>
 
   <div id="clipBox" class="card hidden">
@@ -269,15 +268,17 @@ async function startFinal(){
     setMsg(topMsg,'LỖI: '+String(e.message||e),'err');
   }
 }
-function resultText(d){
-  return 'XANH BIỂN – Đã hoàn thành: '+Number(d.blue||0)+
-    ' · XANH LÁ – Chờ trợ giảng xét duyệt: '+Number(d.green||0)+
-    ' · VÀNG – Chưa đạt thi nói: '+Number(d.yellow||0)+'.';
+function resultHtml(d){
+  return '<div class="status-kpis" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:12px">'+
+    '<div class="status-kpi blue"><span>XANH BIỂN — Đã hoàn thành</span><b>'+Number(d.blue||0)+'</b></div>'+
+    '<div class="status-kpi green"><span>XANH LÁ — Chờ trợ giảng xét duyệt</span><b>'+Number(d.green||0)+'</b></div>'+
+    '<div class="status-kpi yellow"><span>VÀNG — Chưa đạt thi nói</span><b>'+Number(d.yellow||0)+'</b></div>'+
+  '</div>';
 }
 function showSubmitted(d){
   resultCard.classList.remove('hidden');
-  resultSummary.className='msg ok';
-  resultSummary.textContent=resultText(d);
+  resultSummary.className='';
+  resultSummary.innerHTML=resultHtml(d);
 
   if(d.clipRequired){
     clipBox.classList.remove('hidden');
@@ -364,8 +365,8 @@ function handleBackend(e){
   if(activePost==='FINAL'){
     topMsg.textContent='';
     resultCard.classList.remove('hidden');
-    resultSummary.className='msg ok';
-    resultSummary.textContent=resultText(d);
+    resultSummary.className='';
+    resultSummary.innerHTML=resultHtml(d);
 
     const used=Number(d.attempts&&d.attempts.used||0);
     const max=Number(d.attempts&&d.attempts.max||0);
