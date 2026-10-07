@@ -40,13 +40,13 @@
         <div id="examAttempts" class="statusbar centered-status">Đang tải số lần thi...</div>
       </div>
       <div class="exam-grid exam-parent-grid">
-        <button id="examMorningCard" class="exam-parent-card" onclick="showFrame('morning.html','exam')">
+        <button id="examMorningCard" class="exam-parent-card" onclick="openBeforeFinal('morning.html','exam')">
           <b>CA SÁNG</b>
           <span>Thi viết TỪ MỚI + ĐỎ CŨ</span>
           <em id="examMorningMeta">Đang tải...</em>
           <i class="mini-progress"><u id="examMorningBar"></u></i>
         </button>
-        <button id="examDrillCard" class="exam-parent-card" onclick="showFrame('drill.html?examOnly=1','exam')">
+        <button id="examDrillCard" class="exam-parent-card" onclick="openBeforeFinal('drill.html?examOnly=1','exam')">
           <b>CA THI GIỮA NGÀY</b>
           <span>ĐỎ → VÀNG bằng thi viết · VÀNG → XANH BIỂN bằng thi nói</span>
           <em id="examDrillMeta">Đang tải...</em>
@@ -76,8 +76,8 @@
 <script>
 const ROLE=(qp('role')||'student').toLowerCase();
 const VIEW=(qp('view')||'info').toLowerCase();
-const UI_BUILD='20261007.1';
-let CTX=null,STUDENT_INFO=null;
+const UI_BUILD='20261007.4';
+let CTX=null,STUDENT_INFO=null,PRACTICE_TAB=null;
 window.IEC_V4_RUNTIME_CONFIG=null;
 window.IEC_V4_CONFIG_PROMISE=null;
 window.IEC_V4_ENSURE_CONFIG=function(){
@@ -119,6 +119,86 @@ function percent(a,b){a=Number(a||0);b=Number(b||0);return b>0?Math.round(a*100/
 function formatDateVN(s){const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?m[3]+'/'+m[2]+'/'+m[1]:(s||'—');}
 function attemptsText(used,max,label){used=Number(used||0);max=Number(max||0);return 'Đã thi '+used+'/'+max+' '+(label||'lần')+' · còn '+Math.max(0,max-used)+' lần';}
 function setBar(el,used,max){if(el)el.style.width=clamp(percent(used,max),0,100)+'%';}
+function clockMinutes(s){
+  const m=String(s||'').trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if(!m)return null;
+  const h=Number(m[1]),min=Number(m[2]);
+  return h>=0&&h<24&&min>=0&&min<60?h*60+min:null;
+}
+function vietnamNowMinutes(){
+  try{
+    const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());
+    let h=Number((parts.find(x=>x.type==='hour')||{}).value||0);
+    const m=Number((parts.find(x=>x.type==='minute')||{}).value||0);
+    if(h===24)h=0;
+    return h*60+m;
+  }catch(e){
+    const n=new Date();return n.getHours()*60+n.getMinutes();
+  }
+}
+function isFinalWindowOpen(d){
+  d=d||{};
+  const f=d.final||{},run=d.run||{};
+  const finalStatus=String(f.status||'').toUpperCase();
+  const runStatus=String(run.status||'').toUpperCase();
+  const finalUsed=Number(f.used||0);
+  if(finalUsed>0)return true;
+  if(['STARTED','AWAIT_CLIP','COMPLETED','CLIP_MISSING','DONE','RETRY_FINAL','MAX_ATTEMPTS','MISSED'].includes(finalStatus))return true;
+  if(runStatus==='CLOSED')return true;
+  const openMin=clockMinutes(run.finalOpen);
+  return openMin!=null&&vietnamNowMinutes()>=openMin;
+}
+function setLockedButton(el,locked,title){
+  if(!el)return;
+  el.disabled=!!locked;
+  el.style.opacity=locked?'0.48':'';
+  el.style.cursor=locked?'not-allowed':'';
+  if(locked&&title)el.title=title;else el.removeAttribute('title');
+}
+function applyFinalWindowLocks(d){
+  const locked=isFinalWindowOpen(d);
+  const title='ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ';
+
+  setLockedButton(PRACTICE_TAB,locked,title);
+  if(PRACTICE_TAB){
+    PRACTICE_TAB.onclick=locked?null:function(){openBeforeFinal('drill.html','frame');};
+  }
+
+  const morningCard=document.getElementById('examMorningCard');
+  setLockedButton(morningCard,locked,title);
+  if(morningCard){
+    morningCard.onclick=locked?null:function(){openBeforeFinal('morning.html','exam');};
+  }
+
+  const drillCard=document.getElementById('examDrillCard');
+  setLockedButton(drillCard,locked,title);
+  if(drillCard){
+    drillCard.onclick=locked?null:function(){openBeforeFinal('drill.html?examOnly=1','exam');};
+  }
+
+  return locked;
+}
+async function openBeforeFinal(page,tab){
+  try{
+    const d=await loadStudentInfo(true);
+    if(isFinalWindowOpen(d)){
+      applyFinalWindowLocks(d);
+      if(tab==='exam'){
+        showView('examView');
+        document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='exam'));
+      }else{
+        showView('infoView');
+        document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='info'));
+      }
+      return false;
+    }
+    showFrame(page,tab);
+    return true;
+  }catch(e){
+    showErr(e);
+    return false;
+  }
+}
 function finalPortalState(f){
   f=f||{};const k=String(f.status||'').toUpperCase();
   if(k==='AWAIT_CLIP')return f.awaitingClip?'CHỜ VIDEO':'ĐÃ HOÀN THÀNH';
@@ -164,6 +244,11 @@ async function loadStudentInfo(force){
   STUDENT_INFO=d;renderStudentInfo(d);renderExamOverview(d);return d;
 }
 function nextActionText(d){
+  if(isFinalWindowOpen(d)){
+    if(Number(d.counts.YELLOW||0)>0)return 'CA CUỐI NGÀY đã mở. Bạn còn '+d.counts.YELLOW+' VÀNG → vào CA CUỐI NGÀY để thi nói.';
+    if(Number(d.reviewWaiting||0)>0)return 'CA CUỐI NGÀY đã mở. Bạn có '+d.reviewWaiting+' nội dung XANH LÁ đang chờ trợ giảng xét duyệt.';
+    return 'CA CUỐI NGÀY đã mở. LUYỆN TẬP, CA SÁNG và CA THI GIỮA NGÀY đã đóng.';
+  }
   if(Number(d.counts.ACTIVE_NEW||0)>0)return 'Bạn còn nội dung TỪ MỚI chưa qua thi viết → ưu tiên CA SÁNG.';
   if(Number(d.counts.RED||0)>0)return 'Bạn còn '+d.counts.RED+' ĐỎ → vào LUYỆN TẬP → LUYỆN VIẾT trước khi THI VIẾT: CẢI THIỆN ĐỎ.';
   if(Number(d.counts.YELLOW||0)>0)return 'Bạn còn '+d.counts.YELLOW+' VÀNG → luyện nghe–nói, sau đó có thể THI NÓI để hoàn thành XANH BIỂN.';
@@ -192,8 +277,8 @@ function renderStudentInfo(d){
       '<div class="today-completion"><div class="mini-donut" style="--p:'+todayPct+'"><b>'+Number(t.blue||0)+'/'+Number(t.assigned||0)+'</b><span>'+todayPct+'%</span></div><div><strong>HOÀN THÀNH HÔM NAY</strong><p>'+(t.assigned?('Còn '+Math.max(0,Number(t.assigned)-Number(t.blue||0))+' nội dung trong nhóm được giao hôm nay.'):'Chưa có dữ liệu phân công của ngày hiện tại.')+'</p></div></div>'+ 
     '</section>'+
     '<section class="card"><h2>CÁC CA HÔM NAY</h2><div class="session-cards">'+
-      sessionCardHtml('CA SÁNG','THI VIẾT',d.morning.used,d.morning.maxAttempts,uiState(d.morning.status))+
-      middaySessionCardHtml(d)+
+      sessionCardHtml('CA SÁNG','THI VIẾT',d.morning.used,d.morning.maxAttempts,isFinalWindowOpen(d)?'ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ':uiState(d.morning.status))+
+      middaySessionCardHtml(d,isFinalWindowOpen(d))+
       sessionCardHtml('CA CUỐI NGÀY','THI NÓI',d.final.used,d.final.maxAttempts,finalPortalState(d.final))+
     '</div></section>'+
     '<section class="card ta-wait-card"><h2>TRỢ GIẢNG ĐANG ĐÁNH GIÁ</h2><div class="ta-wait-number">'+Number(d.reviewWaiting||0)+' <span>XANH LÁ</span></div><div class="sub">'+(d.reviewWaiting?'Đã nộp và đang chờ xét duyệt. ĐẠT → XANH BIỂN · CHƯA ĐẠT → VÀNG.':'Không có nội dung đang chờ trợ giảng.')+'</div></section>'+
@@ -203,13 +288,13 @@ function renderStudentInfo(d){
 function sessionCardHtml(title,sub,used,max,status){
   const p=percent(used,max);return '<div class="session-card"><h3>'+esc(title)+'</h3><div class="session-sub">'+esc(sub)+'</div><div class="session-attempt">'+attemptsText(used,max,'lần')+'</div><div class="mini-progress"><u style="width:'+p+'%"></u></div><div class="session-status">'+esc(status)+'</div></div>';
 }
-function middaySessionCardHtml(d){
+function middaySessionCardHtml(d,closed){
   const w=d.drillWrite||{used:0,max:0,remaining:0},s=d.drillSpeak||{used:0,max:0,remaining:0};
   return '<div class="session-card midday-session"><h3>CA THI GIỮA NGÀY</h3>'+
     '<div class="session-sub">ĐỎ → VÀNG bằng thi viết · VÀNG → XANH BIỂN bằng thi nói</div>'+
     '<div class="midday-attempt-row"><span><b>THI VIẾT</b>'+esc(w.used+'/'+w.max+' · còn '+w.remaining)+'</span><i class="mini-progress"><u style="width:'+percent(w.used,w.max)+'%"></u></i></div>'+
     '<div class="midday-attempt-row"><span><b>THI NÓI</b>'+esc(s.used+'/'+s.max+' · còn '+s.remaining)+'</span><i class="mini-progress"><u style="width:'+percent(s.used,s.max)+'%"></u></i></div>'+
-    '<div class="session-status">Còn '+Number(d.counts.RED||0)+' ĐỎ · '+Number(d.counts.YELLOW||0)+' VÀNG</div></div>';
+    '<div class="session-status">'+(closed?'ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ':('Còn '+Number(d.counts.RED||0)+' ĐỎ · '+Number(d.counts.YELLOW||0)+' VÀNG'))+'</div></div>';
 }
 function renderExamOverview(d){
   if(!d||!document.getElementById('examAttempts'))return;
@@ -240,42 +325,11 @@ function renderExamOverview(d){
     ' · '+finalPortalState(d.final);
   setBar(examFinalBar,d.final.used,d.final.maxAttempts);
 
-  // Khi CA CUỐI NGÀY đã mở thì CA GIỮA NGÀY phải đóng.
-  const finalStatus=String(d.final&&d.final.status||'').toUpperCase();
-  const finalUsed=Number(d.final&&d.final.used||0);
-  const finalOpened=
-    finalUsed>0 ||
-    ['STARTED','AWAIT_CLIP','COMPLETED','CLIP_MISSING','DONE'].includes(finalStatus);
-
-  const drillCard=document.getElementById('examDrillCard');
-  if(drillCard){
-    drillCard.disabled=finalOpened;
-    drillCard.style.opacity=finalOpened?'0.48':'';
-    drillCard.style.cursor=finalOpened?'not-allowed':'';
-    drillCard.onclick=finalOpened
-      ? null
-      : function(){showFrame('drill.html?examOnly=1','exam');};
-
-    if(finalOpened){
-      examDrillMeta.textContent='ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ';
-    }
+  const locked=applyFinalWindowLocks(d);
+  if(locked){
+    examMorningMeta.textContent='ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ';
+    examDrillMeta.textContent='ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ';
   }
-
-  // Khi CA CUỐI NGÀY đã mở thì CA SÁNG cũng phải đóng.
-  const morningCard=document.getElementById('examMorningCard');
-  if(morningCard){
-    morningCard.disabled=finalOpened;
-    morningCard.style.opacity=finalOpened?'0.48':'';
-    morningCard.style.cursor=finalOpened?'not-allowed':'';
-    morningCard.onclick=finalOpened
-      ? null
-      : function(){showFrame('morning.html','exam');};
-
-    if(finalOpened){
-      examMorningMeta.textContent='ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ';
-    }
-  }
-
 }
 async function openExamOverview(){
   showView('examView');document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='exam'));
@@ -333,7 +387,7 @@ function renderResults(d){
 
   resultBody.onclick=function(e){
     const go=e.target.closest('[data-go-practice]');
-    if(go){const cid=String(go.dataset.contentId||'');showFrame('drill.html?practice=vietwrite&content='+encodeURIComponent(cid),'frame');return;}
+    if(go){const cid=String(go.dataset.contentId||'');openBeforeFinal('drill.html?practice=vietwrite&content='+encodeURIComponent(cid),'frame');return;}
     const toggle=e.target.closest('[data-difficult-toggle]');
     if(toggle){expanded=!expanded;renderDifficult();return;}
     const sort=e.target.closest('[data-difficult-sort]');
@@ -344,49 +398,43 @@ function renderResults(d){
 function buildStudentNav(){
   CTX=requireContext();portalMeta.textContent=CTX.studentId+' · IEC V4.1';
   addTab('info','THÔNG TIN',function(){showView('infoView');loadStudentInfo(true).catch(showErr);});
- const practiceTab=addTab('frame','LUYỆN TẬP',async function(){
-  try{
-    const d=await loadStudentInfo(true);
-
-    const finalStatus=String(d.final&&d.final.status||'').toUpperCase();
-    const finalUsed=Number(d.final&&d.final.used||0);
-    const finalOpened=
-      finalUsed>0 ||
-      ['STARTED','AWAIT_CLIP','COMPLETED','CLIP_MISSING','DONE'].includes(finalStatus);
-
-    if(finalOpened){
-      practiceTab.disabled=true;
-      practiceTab.style.opacity='0.48';
-      practiceTab.style.cursor='not-allowed';
-      return;
-    }
-
-    showFrame('drill.html','frame');
-  }catch(e){
-    showErr(e);
-  }
-});
+  PRACTICE_TAB=addTab('frame','LUYỆN TẬP',function(){openBeforeFinal('drill.html','frame');});
   addTab('exam','CA THI',()=>openExamOverview());
   addTab('result','KẾT QUẢ',()=>loadResults().catch(showErr));
 }
-function routeStudent(){
-  if(VIEW==='practice')return showFrame('drill.html','frame');
+async function routeStudent(){
+  if(VIEW==='practice')return openBeforeFinal('drill.html','frame');
   if(VIEW==='exam'){
     const which=(qp('exam')||'').toLowerCase();
-    if(which==='final')return showFrame('final.html','exam');
-    if(which==='morning')return showFrame('morning.html','exam');
-    if(which==='drill')return showFrame('drill.html?examOnly=1','exam');
+    if(which==='final'){
+      await loadStudentInfo(true);
+      return showFrame('final.html','exam');
+    }
+    if(which==='morning')return openBeforeFinal('morning.html','exam');
+    if(which==='drill')return openBeforeFinal('drill.html?examOnly=1','exam');
     return openExamOverview();
   }
-  if(VIEW==='result')return loadResults().catch(showErr);
-  showView('infoView');loadStudentInfo(true).catch(showErr);
+  if(VIEW==='result'){
+    await loadStudentInfo(true);
+    return loadResults().catch(showErr);
+  }
+  showView('infoView');
+  return loadStudentInfo(true);
 }
 function setupTa(){portalMeta.textContent='Cổng TRỢ GIẢNG';addTab('info','THÔNG TIN',function(){showView('infoView');infoBody.className='card';infoBody.textContent='XANH LÁ: trợ giảng đánh giá ĐẠT → XANH BIỂN; CHƯA ĐẠT → VÀNG.';});addTab('manage','QUẢN LÝ',()=>showFrame('ta-review.html','manage'));if(VIEW==='manage')showFrame('ta-review.html','manage');else document.querySelector('#nav button').click();}
 function setupDashboard(){portalMeta.textContent='QUẢN LÝ IEC';addTab('manage','QUẢN LÝ',()=>showFrame('dashboard.html','manage'));showFrame('dashboard.html','manage');}
 function showErr(e){const target=document.getElementById('infoBody');if(target){target.className='msg err';target.textContent='LỖI: '+String(e.message||e);}portalMeta.textContent='LỖI';}
 
 document.addEventListener('DOMContentLoaded',function(){
-  try{if(ROLE==='ta')setupTa();else if(ROLE==='dashboard'||ROLE==='admin')setupDashboard();else{buildStudentNav();routeStudent();window.IEC_V4_ENSURE_CONFIG().catch(function(){});}}catch(e){showErr(e);}
+  try{
+    if(ROLE==='ta')setupTa();
+    else if(ROLE==='dashboard'||ROLE==='admin')setupDashboard();
+    else{
+      buildStudentNav();
+      routeStudent().catch(showErr);
+      window.IEC_V4_ENSURE_CONFIG().catch(function(){});
+    }
+  }catch(e){showErr(e);}
 });
 </script>
 </body>
