@@ -76,7 +76,7 @@
 <script>
 const ROLE=(qp('role')||'student').toLowerCase();
 const VIEW=(qp('view')||'info').toLowerCase();
-const UI_BUILD='20261007.4';
+const UI_BUILD='20261007.5';
 let CTX=null,STUDENT_INFO=null,PRACTICE_TAB=null;
 window.IEC_V4_RUNTIME_CONFIG=null;
 window.IEC_V4_CONFIG_PROMISE=null;
@@ -148,9 +148,14 @@ function isFinalWindowOpen(d){
   const openMin=clockMinutes(run.finalOpen);
   return openMin!=null&&vietnamNowMinutes()>=openMin;
 }
+function showFinalClosedNotice(){
+  window.alert('Chức năng này đã đóng vì ca thi cuối ngày đã mở.');
+}
 function setLockedButton(el,locked,title){
   if(!el)return;
-  el.disabled=!!locked;
+  // Khóa mềm để vẫn nhận click và hiển thị thông báo.
+  el.disabled=false;
+  if(locked)el.setAttribute('aria-disabled','true');else el.removeAttribute('aria-disabled');
   el.style.opacity=locked?'0.48':'';
   el.style.cursor=locked?'not-allowed':'';
   if(locked&&title)el.title=title;else el.removeAttribute('title');
@@ -161,19 +166,19 @@ function applyFinalWindowLocks(d){
 
   setLockedButton(PRACTICE_TAB,locked,title);
   if(PRACTICE_TAB){
-    PRACTICE_TAB.onclick=locked?null:function(){openBeforeFinal('drill.html','frame');};
+    PRACTICE_TAB.onclick=function(){openBeforeFinal('drill.html','frame');};
   }
 
   const morningCard=document.getElementById('examMorningCard');
   setLockedButton(morningCard,locked,title);
   if(morningCard){
-    morningCard.onclick=locked?null:function(){openBeforeFinal('morning.html','exam');};
+    morningCard.onclick=function(){openBeforeFinal('morning.html','exam');};
   }
 
   const drillCard=document.getElementById('examDrillCard');
   setLockedButton(drillCard,locked,title);
   if(drillCard){
-    drillCard.onclick=locked?null:function(){openBeforeFinal('drill.html?examOnly=1','exam');};
+    drillCard.onclick=function(){openBeforeFinal('drill.html?examOnly=1','exam');};
   }
 
   return locked;
@@ -183,13 +188,7 @@ async function openBeforeFinal(page,tab){
     const d=await loadStudentInfo(true);
     if(isFinalWindowOpen(d)){
       applyFinalWindowLocks(d);
-      if(tab==='exam'){
-        showView('examView');
-        document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='exam'));
-      }else{
-        showView('infoView');
-        document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x.dataset.id==='info'));
-      }
+      showFinalClosedNotice();
       return false;
     }
     showFrame(page,tab);
