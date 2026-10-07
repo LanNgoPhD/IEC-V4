@@ -1,14 +1,89 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>IEC V4 – Trợ giảng xem xét</title><link rel="stylesheet" href="styles.css?v=20261006.4"><script src="config.js?v=20261006.1"></script><script src="common.js?v=20261007.11"></script></head><body><script>(function(){if(qp('embed')==='1')return;var u=new URL('index.html',location.href);new URLSearchParams(location.search).forEach(function(v,k){u.searchParams.set(k,v)});u.searchParams.set('role','ta');u.searchParams.set('view','manage');location.replace(u.toString());})();</script><div class="wrap">
-<div class="card"><h1>TRỢ GIẢNG – XEM XÉT XANH LÁ</h1><div class="sub">XANH LÁ được trợ giảng xác nhận: ĐẠT → XANH BIỂN; CHƯA ĐẠT → VÀNG. Không chuyển ĐỎ vì đánh giá phát âm.</div><div id="meta" class="statusbar"></div><button id="reload" class="secondary">TẢI LẠI DANH SÁCH</button></div>
-<div id="work" class="card hidden"><div class="tag" id="progress"></div><h2 id="word"></h2><div class="muted" id="student"></div><video id="video" controls playsinline style="width:100%;max-height:420px;margin-top:12px"></video><div style="margin-top:12px"><label>Nhận xét TA</label><textarea id="comment" rows="3" placeholder="Nhận xét ngắn cho sinh viên"></textarea><div class="row" style="margin-top:10px"><button id="blue" class="good">XANH BIỂN – ĐẠT</button><button id="yellow" class="yellow">VÀNG – CHƯA ĐẠT, LUYỆN LẠI</button></div></div><div id="msg" class="msg"></div></div>
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>IEC V4 – Trợ giảng xem xét</title><link rel="stylesheet" href="styles.css?v=20261007.12"><script src="config.js?v=20261006.1"></script><script src="common.js?v=20261007.12"></script></head><body><script>(function(){if(qp('embed')==='1')return;var u=new URL('index.html',location.href);new URLSearchParams(location.search).forEach(function(v,k){u.searchParams.set(k,v)});u.searchParams.set('role','ta');u.searchParams.set('view','manage');location.replace(u.toString());})();</script><div class="wrap">
+<div class="card"><h1>TRỢ GIẢNG – XEM XÉT XANH LÁ</h1><div class="sub">XANH LÁ được trợ giảng xác nhận: ĐẠT → XANH BIỂN; CHƯA ĐẠT → VÀNG. Không chuyển ĐỎ vì đánh giá phát âm.</div><div id="meta" class="statusbar"></div><div id="saveMsg" class="msg hidden"></div><button id="reload" class="secondary">TẢI LẠI DANH SÁCH</button></div>
+<div id="work" class="card hidden"><div class="tag" id="progress"></div><h2 id="word"></h2><div class="muted" id="student"></div><video id="video" controls playsinline style="width:100%;max-height:420px;margin-top:12px"></video><div style="margin-top:12px"><label>Nhận xét TA</label><textarea id="comment" rows="3" placeholder="Nhận xét ngắn cho sinh viên"></textarea><div class="row" style="margin-top:10px"><button id="blue" class="blueAction">XANH BIỂN – ĐẠT</button><button id="yellow" class="yellow">VÀNG – CHƯA ĐẠT, LUYỆN LẠI</button></div></div><div id="msg" class="msg"></div></div>
 <div id="empty" class="card hidden"><h2 id="emptyTitle">Không có XANH LÁ chờ xem xét</h2><div id="emptyMsg" class="msg ok">Hàng chờ hiện đang trống.</div></div>
 <footer class="app-footer">Phát triển bởi TS. Ngô Ngọc Lân</footer></div><iframe name="submitFrame" class="hidden"></iframe><script>
-const CLASS=qp('class'),TOKEN=qp('token');let QUEUE=[],POS=0;
-const meta=document.getElementById('meta'),work=document.getElementById('work'),empty=document.getElementById('empty'),emptyTitle=document.getElementById('emptyTitle'),emptyMsg=document.getElementById('emptyMsg'),reload=document.getElementById('reload'),blue=document.getElementById('blue'),yellow=document.getElementById('yellow'),comment=document.getElementById('comment'),msg=document.getElementById('msg');
-document.addEventListener('DOMContentLoaded',async()=>{window.addEventListener('message',handleMessage);reload.onclick=loadQueue;blue.onclick=()=>submitDecision('BLUE');yellow.onclick=()=>submitDecision('YELLOW');try{if(!CLASS||!TOKEN)throw new Error('Liên kết trợ giảng không đầy đủ');await loadQueue()}catch(e){meta.textContent=String(e.message||e)}});
-let QUEUE_META={waitingTotal:0,waitingForClip:0,readyCount:0,clipRequired:false};
-async function loadQueue(){setMsg(msg,'');const d=await jsonp(API_BASE+'?api=ta-queue&class='+encodeURIComponent(CLASS)+'&token='+encodeURIComponent(TOKEN));if(!d||d.ok===false)throw new Error(d&&d.error||'Không tải được hàng chờ XANH LÁ');QUEUE=d.items||[];POS=0;QUEUE_META={waitingTotal:Number(d.waitingTotal!==undefined?d.waitingTotal:QUEUE.length),waitingForClip:Number(d.waitingForClip||0),readyCount:Number(d.readyCount!==undefined?d.readyCount:QUEUE.length),clipRequired:d.clipRequired===true};meta.textContent=CLASS+' · '+String(d.reviewer||'Trợ giảng')+' · XANH LÁ: '+QUEUE_META.waitingTotal+' · Sẵn sàng chấm: '+QUEUE_META.readyCount+(QUEUE_META.waitingForClip?' · Chờ video: '+QUEUE_META.waitingForClip:'');render()}
-function render(){comment.value='';blue.disabled=false;yellow.disabled=false;setMsg(msg,'');if(POS>=QUEUE.length){work.classList.add('hidden');empty.classList.remove('hidden');if(QUEUE_META.waitingForClip>0){emptyTitle.textContent='XANH LÁ ĐANG CHỜ VIDEO';emptyMsg.textContent='Có '+QUEUE_META.waitingForClip+' nội dung XANH LÁ chưa có liên kết video. Sau khi sinh viên nộp video, các nội dung này sẽ tự xuất hiện để trợ giảng chấm.';}else{emptyTitle.textContent='Không có XANH LÁ chờ xem xét';emptyMsg.textContent='Hàng chờ hiện đang trống.';}return}empty.classList.add('hidden');work.classList.remove('hidden');const x=QUEUE[POS];progress.textContent=(POS+1)+' / '+QUEUE.length;word.textContent=x.english||x.contentId||'';student.textContent='Sinh viên: '+String(x.studentId||'')+' · Ngày '+String(x.programDay||'');video.src=x.clipUrl||''}
-function submitDecision(decision){const x=QUEUE[POS],com=comment.value.trim();blue.disabled=true;yellow.disabled=true;setMsg(msg,'Đang lưu...');postPayload({api:'ta-review-submit',classId:CLASS,token:TOKEN,reviewId:x.reviewId,decision:decision,errorTag:'',comment:com})}
-function handleMessage(e){const d=e.data;if(!d||typeof d!=='object'||d.ok===undefined)return;if(!d.ok){blue.disabled=false;yellow.disabled=false;setMsg(msg,'LỖI: '+String(d.error||'Không xác định'),'err');return}const st=String(d.finalStatus||d.decision||'').toUpperCase();setMsg(msg,'ĐÃ LƯU: '+(st==='BLUE'?'XANH BIỂN – ĐẠT':'VÀNG – LUYỆN LẠI'),'ok');POS++;setTimeout(render,650)}
+const CLASS=qp('class'),TOKEN=qp('token');
+let QUEUE=[],QUEUE_META={waitingTotal:0,waitingForClip:0,readyCount:0,clipRequired:false,reviewer:'Trợ giảng'},TOTAL_AT_LOAD=0,DECIDED_LOCAL=0;
+let SAVE_QUEUE=[],SAVE_ACTIVE=null,SAVE_ERRORS=0,RELOAD_AFTER_SAVE=false;
+const meta=document.getElementById('meta'),saveMsg=document.getElementById('saveMsg'),work=document.getElementById('work'),empty=document.getElementById('empty'),emptyTitle=document.getElementById('emptyTitle'),emptyMsg=document.getElementById('emptyMsg'),reload=document.getElementById('reload'),blue=document.getElementById('blue'),yellow=document.getElementById('yellow'),comment=document.getElementById('comment'),msg=document.getElementById('msg');
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  window.addEventListener('message',handleMessage);
+  window.addEventListener('beforeunload',function(e){if(pendingSaveCount()>0){e.preventDefault();e.returnValue='';}});
+  reload.onclick=()=>{if(pendingSaveCount()>0){RELOAD_AFTER_SAVE=true;setPersistentMsg('Đang lưu '+pendingSaveCount()+' quyết định. Danh sách sẽ tự tải lại khi lưu xong.');return}loadQueue()};
+  blue.onclick=()=>submitDecision('BLUE');yellow.onclick=()=>submitDecision('YELLOW');
+  try{if(!CLASS||!TOKEN)throw new Error('Liên kết trợ giảng không đầy đủ');await loadQueue()}catch(e){meta.textContent=String(e.message||e)}
+});
+
+function pendingSaveCount(){return SAVE_QUEUE.length+(SAVE_ACTIVE?1:0)}
+function updateMeta(){
+  meta.textContent=CLASS+' · '+String(QUEUE_META.reviewer||'Trợ giảng')+' · XANH LÁ: '+QUEUE_META.waitingTotal+' · Sẵn sàng chấm: '+QUEUE_META.readyCount+(QUEUE_META.waitingForClip?' · Chờ video: '+QUEUE_META.waitingForClip:'')+(pendingSaveCount()?' · Đang lưu nền: '+pendingSaveCount():'');
+}
+function setPersistentMsg(text,kind){saveMsg.className='msg'+(kind?' '+kind:'');saveMsg.textContent=String(text||'');saveMsg.classList.toggle('hidden',!text)}
+
+async function loadQueue(){
+  if(pendingSaveCount()>0){RELOAD_AFTER_SAVE=true;return}
+  setMsg(msg,'');setPersistentMsg('');
+  const d=await jsonp(API_BASE+'?api=ta-queue&class='+encodeURIComponent(CLASS)+'&token='+encodeURIComponent(TOKEN));
+  if(!d||d.ok===false)throw new Error(d&&d.error||'Không tải được hàng chờ XANH LÁ');
+  QUEUE=d.items||[];TOTAL_AT_LOAD=QUEUE.length;DECIDED_LOCAL=0;
+  QUEUE_META={waitingTotal:Number(d.waitingTotal!==undefined?d.waitingTotal:QUEUE.length),waitingForClip:Number(d.waitingForClip||0),readyCount:Number(d.readyCount!==undefined?d.readyCount:QUEUE.length),clipRequired:d.clipRequired===true,reviewer:String(d.reviewer||'Trợ giảng')};
+  updateMeta();render();
+}
+
+function render(){
+  comment.value='';blue.disabled=false;yellow.disabled=false;setMsg(msg,'');updateMeta();
+  if(!QUEUE.length){
+    work.classList.add('hidden');empty.classList.remove('hidden');
+    if(pendingSaveCount()>0){
+      emptyTitle.textContent='ĐANG LƯU QUYẾT ĐỊNH';
+      emptyMsg.textContent='Bạn đã chấm xong danh sách trên màn hình. Hệ thống đang lưu '+pendingSaveCount()+' quyết định ở nền; không cần chờ giữa từng câu.';
+    }else if(QUEUE_META.waitingForClip>0){
+      emptyTitle.textContent='XANH LÁ ĐANG CHỜ VIDEO';
+      emptyMsg.textContent='Có '+QUEUE_META.waitingForClip+' nội dung XANH LÁ chưa có liên kết video. Sau khi sinh viên nộp video, các nội dung này sẽ tự xuất hiện để trợ giảng chấm.';
+    }else{
+      emptyTitle.textContent='Không có XANH LÁ chờ xem xét';emptyMsg.textContent='Hàng chờ hiện đang trống.';
+    }
+    return;
+  }
+  empty.classList.add('hidden');work.classList.remove('hidden');
+  const x=QUEUE[0],shown=Math.min(TOTAL_AT_LOAD,DECIDED_LOCAL+1);
+  progress.textContent=shown+' / '+TOTAL_AT_LOAD;word.textContent=x.english||x.contentId||'';student.textContent='Sinh viên: '+String(x.studentId||'')+' · Ngày '+String(x.programDay||'');video.src=x.clipUrl||'';
+}
+
+function submitDecision(decision){
+  if(!QUEUE.length)return;
+  const x=QUEUE.shift(),com=comment.value.trim();DECIDED_LOCAL++;
+  SAVE_QUEUE.push({task:x,decision:decision,comment:com,postId:''});
+  setPersistentMsg('Đã nhận quyết định · đang lưu nền '+pendingSaveCount()+' mục.','ok');
+  render();drainSaveQueue();
+}
+
+function drainSaveQueue(){
+  if(SAVE_ACTIVE||!SAVE_QUEUE.length){
+    if(!SAVE_ACTIVE&&!SAVE_QUEUE.length){
+      updateMeta();
+      if(RELOAD_AFTER_SAVE||!QUEUE.length){RELOAD_AFTER_SAVE=false;loadQueue().catch(function(e){setPersistentMsg('LỖI tải lại danh sách: '+String(e.message||e),'err')})}
+    }
+    return;
+  }
+  SAVE_ACTIVE=SAVE_QUEUE.shift();
+  SAVE_ACTIVE.postId=postPayload({api:'ta-review-submit',classId:CLASS,token:TOKEN,reviewId:SAVE_ACTIVE.task.reviewId,decision:SAVE_ACTIVE.decision,errorTag:'',comment:SAVE_ACTIVE.comment});
+  updateMeta();
+}
+
+function handleMessage(e){
+  const d=e.data;if(!d||typeof d!=='object'||d.ok===undefined)return;
+  const id=String(d.__iecPostId||'');if(!SAVE_ACTIVE||!id||id!==SAVE_ACTIVE.postId)return;
+  const job=SAVE_ACTIVE;SAVE_ACTIVE=null;
+  if(!d.ok){
+    SAVE_ERRORS++;QUEUE.push(job.task);DECIDED_LOCAL=Math.max(0,DECIDED_LOCAL-1);
+    setPersistentMsg('LỖI lưu "'+String(job.task.english||job.task.contentId||'')+'": '+String(d.error||'Không xác định')+'. Mục này đã được đưa lại cuối danh sách để chấm lại.','err');
+    render();drainSaveQueue();return;
+  }
+  QUEUE_META.readyCount=Math.max(0,QUEUE_META.readyCount-1);QUEUE_META.waitingTotal=Math.max(0,QUEUE_META.waitingTotal-1);
+  if(SAVE_ERRORS===0)setPersistentMsg(pendingSaveCount()?'Đã lưu · còn '+pendingSaveCount()+' quyết định đang lưu nền.':'Đã lưu xong các quyết định.','ok');
+  updateMeta();render();drainSaveQueue();
+}
 </script></body></html>
