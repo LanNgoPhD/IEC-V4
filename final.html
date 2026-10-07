@@ -32,9 +32,9 @@
 
   <div id="testCard" class="card hidden">
     <div id="progress" class="tag"></div>
-    <div id="prompt" class="bigword">---</div>
+    <div id="finalPrompt" class="bigword">---</div>
     <div id="timer" class="timer"></div>
-    <div id="status" class="statusbar"></div>
+    <div id="finalStatus" class="statusbar"></div>
     <div class="info-grid">
       <b>Máy nghe được</b><span id="heard">---</span>
       <b>Nói lại (lệnh AGAIN)</b><span id="again">---</span>
@@ -63,6 +63,18 @@
 
 <script>
 let CTX,DATA,activePost='',clipPending=false;
+
+const finalProgressEl=document.getElementById('progress');
+const finalPromptEl=document.getElementById('finalPrompt');
+const finalTimerEl=document.getElementById('timer');
+const finalStatusEl=document.getElementById('finalStatus');
+const finalHeardEl=document.getElementById('heard');
+const finalAgainEl=document.getElementById('again');
+
+function vietnameseText_(item){
+  const value=item&&(item.vietnamese!=null?item.vietnamese:item.VIETNAMESE);
+  return String(value==null?'':value).trim();
+}
 
 function inheritClientConfig(){
   try{
@@ -212,29 +224,29 @@ async function startFinal(){
       DATA.words,DATA.profile,DATA.contextPhrases,
       {
         beforeWord:(w,i,n)=>{
-          progress.textContent=(i+1)+' / '+n;
-          prompt.textContent=String(w.vietnamese||'');
-          heard.textContent='---';
-          status.textContent='CHUẨN BỊ';
-          timer.textContent='';
-          timer.style.color='';
-          again.textContent='Có thể nói '+String(IEC_CONFIG.RESTART_WORD||'AGAIN')+
+          finalProgressEl.textContent=(i+1)+' / '+n;
+          finalPromptEl.textContent=vietnameseText_(w);
+          finalHeardEl.textContent='---';
+          finalStatusEl.textContent='CHUẨN BỊ';
+          finalTimerEl.textContent='';
+          finalTimerEl.style.color='';
+          finalAgainEl.textContent='Có thể nói '+String(IEC_CONFIG.RESTART_WORD||'AGAIN')+
             ' tối đa '+configuredMaxRestart()+' lần trong cửa phản xạ';
         },
         status:(st,h,info)=>{
-          status.textContent=st;
-          heard.textContent=h||'---';
-          again.textContent='AGAIN '+Number(info.restartCount||0)+' / '+configuredMaxRestart();
+          finalStatusEl.textContent=st;
+          finalHeardEl.textContent=h||'---';
+          finalAgainEl.textContent='AGAIN '+Number(info.restartCount||0)+' / '+configuredMaxRestart();
         },
         timer:(t)=>{
           const sec=Math.max(0,Number(t&&t.remainingSec)||0);
-          timer.textContent='⏱ '+String(t&&t.label||'THỜI GIAN')+' · '+sec.toFixed(1)+' s';
-          timer.style.color=(t&&t.urgent)?'#b42318':'';
+          finalTimerEl.textContent='⏱ '+String(t&&t.label||'THỜI GIAN')+' · '+sec.toFixed(1)+' s';
+          finalTimerEl.style.color=(t&&t.urgent)?'#b42318':'';
         },
         afterWord:()=>{
-          status.textContent='ĐÃ GHI NHẬN · hệ thống sẽ chấm sau khi kết thúc bài';
-          timer.textContent='✓ ĐÃ CHỐT';
-          timer.style.color='';
+          finalStatusEl.textContent='ĐÃ GHI NHẬN · hệ thống sẽ chấm sau khi kết thúc bài';
+          finalTimerEl.textContent='✓ ĐÃ CHỐT';
+          finalTimerEl.style.color='';
         }
       }
     );
