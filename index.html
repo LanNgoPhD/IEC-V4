@@ -61,7 +61,7 @@
           <em id="examDrillMeta">Đang tải...</em>
           <i class="mini-progress"><u id="examDrillBar"></u></i>
         </button>
-        <button id="examFinalCard" class="exam-parent-card" onclick="openFinalExam()">
+        <button class="exam-parent-card" onclick="showFrame('final.html','exam')">
           <b>CA CUỐI NGÀY</b>
           <span>Thi nói các nội dung VÀNG còn lại</span>
           <em id="examFinalMeta">Đang tải...</em>
@@ -83,7 +83,7 @@
   <div id="finalClosedModal" class="iec-lock-modal" hidden role="dialog" aria-modal="true" aria-labelledby="finalClosedModalTitle">
     <div class="iec-lock-modal-box">
       <div id="finalClosedModalTitle" class="iec-lock-modal-title">THÔNG BÁO</div>
-      <div id="finalClosedModalText" class="iec-lock-modal-text">Chức năng này đã đóng vì ca thi cuối ngày đã mở.</div>
+      <div class="iec-lock-modal-text">Chức năng này đã đóng vì ca thi cuối ngày đã mở.</div>
       <button id="finalClosedModalBtn" type="button" class="iec-lock-modal-btn">ĐÃ HIỂU</button>
     </div>
   </div>
@@ -94,7 +94,7 @@
 <script>
 const ROLE=(qp('role')||'student').toLowerCase();
 const VIEW=(qp('view')||'info').toLowerCase();
-const UI_BUILD='20261008.FINAL_GATE_1';
+const UI_BUILD='20261007.9';
 let CTX=null,STUDENT_INFO=null,PRACTICE_TAB=null,FINAL_LOCK_STATE=null;
 window.IEC_V4_RUNTIME_CONFIG=null;
 window.IEC_V4_CONFIG_PROMISE=null;
@@ -178,14 +178,10 @@ function isFinalWindowOpen(d,nowValue){
   const openMin=clockMinutes(run.finalOpen);
   return openMin!=null&&clock.minutes>=openMin;
 }
-function showFinalClosedNotice(title,message){
+function showFinalClosedNotice(){
   const modal=document.getElementById('finalClosedModal');
   if(!modal)return;
-  document.getElementById('finalClosedModalTitle').textContent=title||'THÔNG BÁO';
-  document.getElementById('finalClosedModalText').textContent=message||'Chức năng này đã đóng vì ca thi cuối ngày đã mở.';
   modal.hidden=false;
-  const btn=document.getElementById('finalClosedModalBtn');
-  if(btn)btn.focus();
 }
 function hideFinalClosedNotice(){
   const modal=document.getElementById('finalClosedModal');
@@ -199,50 +195,6 @@ function setLockedButton(el,locked,title){
   el.style.opacity=locked?'0.48':'';
   el.style.cursor=locked?'not-allowed':'';
   if(locked&&title)el.title=title;else el.removeAttribute('title');
-}
-// Điều kiện mở ô CA CUỐI: dùng giờ Việt Nam và ngày của chính RUN.
-// Khóa mềm tại portal để click xem popup; backend vẫn là nguồn kiểm tra quyền thi.
-function finalExamGate(d,nowValue){
-  const run=d&&d.run||{},final=d&&d.final||{};
-  const clock=vietnamClockParts(nowValue),day=runDateKey(run);
-  if(!day)return {locked:true,label:'KHÔNG XÁC ĐỊNH NGÀY HỌC',message:'Chưa xác định được ngày học. Vui lòng tải lại trang.'};
-  if(day<clock.dateKey||String(run.status||'').toUpperCase()==='CLOSED'){
-    return {locked:true,label:'ĐÃ ĐÓNG · HẾT NGÀY HỌC',message:'Ca cuối của ngày '+formatDateVN(day)+' đã đóng. Không thể thi hoặc nộp bài sau ngày học.'};
-  }
-  if(day>clock.dateKey){
-    return {locked:true,label:'CHƯA ĐẾN NGÀY HỌC',message:'Ca cuối ngày '+formatDateVN(day)+' chưa mở.'};
-  }
-  const opens=clockMinutes(run.finalOpen);
-  const startsUntil=clockMinutes(run.finalDeadline);
-  const submitsUntil=clockMinutes(run.finalSubmitDeadline||run.clipDeadline||'23:59');
-  if(opens===null||startsUntil===null||submitsUntil===null){
-    return {locked:true,label:'CHƯA CÓ CẤU HÌNH GIỜ',message:'Không đọc được giờ mở hoặc hạn nộp ca cuối. Vui lòng báo quản lý.'};
-  }
-  if(clock.minutes<opens){
-    return {locked:true,label:'CHƯA MỞ · '+String(run.finalOpen),message:'Chưa đến giờ bắt đầu bài thi nói cuối. Ca thi mở lúc '+String(run.finalOpen)+'.'};
-  }
-  if(clock.minutes>submitsUntil){
-    return {locked:true,label:'ĐÃ QUÁ HẠN NỘP BÀI',message:'Đã quá hạn nộp bài thi cuối ('+String(run.finalSubmitDeadline||run.clipDeadline||'23:59')+':59 của ngày học).'};
-  }
-  // Cho phép vào lại để nộp link video của FINAL đã làm xong, ngay cả sau giờ dừng bắt đầu lượt mới.
-  const awaiting=final.awaitingClip===true||String(final.status||'').toUpperCase()==='AWAIT_CLIP';
-  if(clock.minutes>startsUntil&&!awaiting){
-    return {locked:true,label:'HẾT GIỜ BẮT ĐẦU LƯỢT MỚI',message:'Đã hết giờ bắt đầu lượt thi nói cuối mới ('+String(run.finalDeadline)+').'};
-  }
-  if(awaiting&&clock.minutes>startsUntil){
-    return {locked:false,label:'CHỜ NỘP BÀI THI CUỐI',message:''};
-  }
-  return {locked:false,label:'',message:''};
-}
-async function openFinalExam(){
-  try{
-    const d=STUDENT_INFO||await loadStudentInfo(true);
-    const gate=finalExamGate(d);
-    applyFinalWindowLocks(d);
-    if(gate.locked){showFinalClosedNotice('CA CUỐI NGÀY',gate.message);return false;}
-    showFrame('final.html','exam');
-    return true;
-  }catch(e){showErr(e);return false;}
 }
 function applyFinalWindowLocks(d){
   const locked=isFinalWindowOpen(d);
@@ -272,10 +224,6 @@ function applyFinalWindowLocks(d){
       : function(){openBeforeFinal('drill.html?examOnly=1','exam');};
   }
 
-  const finalCard=document.getElementById('examFinalCard');
-  const finalGate=finalExamGate(d);
-  setLockedButton(finalCard,finalGate.locked,finalGate.label);
-  if(finalCard)finalCard.onclick=openFinalExam;
   return locked;
 }
 async function openBeforeFinal(page,tab){
@@ -381,7 +329,7 @@ function renderStudentInfo(d){
       sessionCardHtml('CA CUỐI NGÀY','THI NÓI',d.final.used,d.final.maxAttempts,finalPortalState(d.final))+
     '</div></section>'+
     '<section class="card ta-wait-card"><h2>TRỢ GIẢNG ĐANG ĐÁNH GIÁ</h2><div class="ta-wait-number">'+Number(d.reviewWaiting||0)+' <span>XANH LÁ</span></div><div class="sub">'+(d.final&&d.final.awaitingClip?'Chưa chuyển cho trợ giảng: bạn phải NỘP BÀI THI CUỐI kèm link video trước.':(d.reviewWaiting?'Đã nộp bài và đang chờ xét duyệt. ĐẠT → XANH BIỂN · CHƯA ĐẠT → VÀNG.':'Không có nội dung đang chờ trợ giảng.'))+'</div></section>'+
-    '<section class="card"><h2>LỊCH HÔM NAY</h2><div class="day-timeline"><div><b>CA SÁNG</b><span>Từ '+esc(d.run.morningOpen||'—')+'</span></div><div><b>CA THI GIỮA NGÀY</b><span>Sau CA SÁNG → trước '+esc(d.run.finalOpen||'—')+'</span></div><div><b>CA CUỐI NGÀY</b><span>Từ '+esc(d.run.finalOpen||'—')+' · bắt đầu trước '+esc(d.run.finalDeadline||'—')+'</span></div><div><b>NỘP BÀI THI CUỐI</b><span>Hạn '+esc(d.run.finalSubmitDeadline||d.run.clipDeadline||'—')+' · bắt buộc kèm link video</span></div></div></section>'+
+    '<section class="card"><h2>LỊCH HÔM NAY</h2><div class="day-timeline"><div><b>CA SÁNG</b><span>Từ '+esc(d.run.morningOpen||'—')+'</span></div><div><b>CA THI GIỮA NGÀY</b><span>Sau CA SÁNG → trước '+esc(d.run.finalOpen||'—')+'</span></div><div><b>CA CUỐI NGÀY</b><span>Từ '+esc(d.run.finalOpen||'—')+' · bắt đầu trước '+esc(d.run.finalDeadline||'—')+'</span></div><div><b>NỘP BÀI THI CUỐI</b><span>Hạn '+esc(d.run.finalSubmitDeadline||d.run.clipDeadline||'—')+' · chỉ cần video khi có XANH LÁ chờ TA</span></div></div></section>'+
     '<details class="card class-details"><summary>THÔNG TIN LỚP HỌC</summary><div class="class-info-grid"><b>Lớp</b><span>'+esc(c.className||CTX.classId)+'</span><b>Mã sinh viên</b><span>'+esc(d.student.studentId)+'</span><b>Chương trình</b><span>'+esc(c.programName||c.programId||'—')+'</span><b>Ngày học</b><span>'+day+(totalDays?' / '+totalDays:'')+'</span><b>Ngày bắt đầu</b><span>'+formatDateVN(c.startDate)+'</span><b>Kết thúc dự kiến</b><span>'+formatDateVN(c.plannedEndDate)+'</span><b>Giảng viên</b><span>'+esc(teacher)+'</span><b>Trợ giảng</b><span>'+esc(ta)+'</span></div></details>';
 }
 function sessionCardHtml(title,sub,used,max,status){
@@ -419,10 +367,9 @@ function renderExamOverview(d){
     Math.max(d.drillWrite.max,d.drillSpeak.max)
   );
 
-  const finalGate=finalExamGate(d);
   examFinalMeta.textContent=
     attemptsText(d.final.used,d.final.maxAttempts,'lần')+
-    ' · '+(finalGate.locked?finalGate.label:finalPortalState(d.final));
+    ' · '+finalPortalState(d.final);
   setBar(examFinalBar,d.final.used,d.final.maxAttempts);
 
   const locked=applyFinalWindowLocks(d);
@@ -508,7 +455,7 @@ async function routeStudent(){
     const which=(qp('exam')||'').toLowerCase();
     if(which==='final'){
       await loadStudentInfo(true);
-      return openFinalExam();
+      return showFrame('final.html','exam');
     }
     if(which==='morning')return openBeforeFinal('morning.html','exam');
     if(which==='drill')return openBeforeFinal('drill.html?examOnly=1','exam');
@@ -531,7 +478,6 @@ document.addEventListener('DOMContentLoaded',function(){
   if(modalBtn)modalBtn.addEventListener('click',hideFinalClosedNotice);
   if(modal)modal.addEventListener('click',function(e){if(e.target===modal)hideFinalClosedNotice();});
   document.addEventListener('keydown',function(e){if(e.key==='Escape')hideFinalClosedNotice();});
-  window.setInterval(function(){if(STUDENT_INFO)renderExamOverview(STUDENT_INFO);},15000);
   try{
     if(ROLE==='ta')setupTa();
     else if(ROLE==='dashboard'||ROLE==='admin')setupDashboard();

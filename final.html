@@ -8,12 +8,6 @@
   <link rel="stylesheet" href="styles.css?v=20261006.4">
   <script src="config.js?v=20261006.1"></script>
   <script src="common.js?v=20261007.11"></script>
-<style>
-.final-time-popup{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
-.final-time-popup.hidden{display:none}
-.final-time-dialog{background:#fff;border-radius:16px;padding:24px;max-width:460px;width:100%;text-align:center;box-shadow:0 12px 35px #0002}
-.final-time-dialog p{font-size:17px;line-height:1.5;margin:0 0 20px}
-</style>
 </head>
 <body>
 <script>
@@ -34,7 +28,6 @@
     <div id="meta" class="statusbar">Đang chuẩn bị...</div>
     <button id="startBtn">BẮT ĐẦU THI NÓI CUỐI</button>
     <div id="topMsg" class="msg"></div>
-    <div id="finalTimePopup" class="final-time-popup hidden" role="dialog" aria-modal="true" aria-labelledby="finalTimePopupText"><div class="final-time-dialog"><p id="finalTimePopupText"></p><button type="button" id="finalTimePopupClose">ĐÃ HIỂU</button></div></div>
   </div>
 
   <div id="testCard" class="card hidden">
@@ -174,52 +167,6 @@ async function ensureIosSpeakReady(){
   }
   return true;
 }
-// Khóa mềm ca cuối: chỉ UX; backend vẫn xác thực cửa thời gian độc lập.
-let finalTimeRun=null, finalTimeReady=false, finalStartBusy=false;
-function finalVnClock(){
-  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date());
-  const get=k=>String((parts.find(p=>p.type===k)||{}).value||'');
-  return {date:get('year')+'-'+get('month')+'-'+get('day'),minute:(Number(get('hour'))%24)*60+Number(get('minute'))};
-}
-function finalTimeMinutes(v){const m=String(v||'').match(/^(\d{1,2}):(\d{2})/);return m?Number(m[1])*60+Number(m[2]):null;}
-function finalTimeReason(){
-  if(!finalTimeReady)return 'Đang kiểm tra thời gian mở ca thi. Vui lòng thử lại.';
-  const r=finalTimeRun||{},clock=finalVnClock();
-  const runDate=String(r.calendarDate||'').match(/^\d{4}-\d{2}-\d{2}$/)?.[0] || (String(r.runId||CTX?.runId||'').match(/-(\d{4})(\d{2})(\d{2})$/)||[]).slice(1).join('-');
-  const open=finalTimeMinutes(r.finalOpen),deadline=finalTimeMinutes(r.finalDeadline);
-  if(String(r.status||'').toUpperCase()==='CLOSED'||(runDate&&clock.date>runDate))return 'Ngày học này đã đóng. Không thể bắt đầu lượt thi nói cuối mới.';
-  if(runDate&&clock.date<runDate)return 'Chưa đến ngày mở bài thi nói cuối.';
-  if(open!=null&&clock.minute<open)return 'Chưa đến giờ bắt đầu bài thi nói cuối. Ca thi mở lúc '+r.finalOpen+'.';
-  if(deadline!=null&&clock.minute>deadline)return 'Đã hết giờ bắt đầu lượt thi nói cuối mới ('+r.finalDeadline+').';
-  return '';
-}
-function refreshFinalTimeButton(){
-  if(startBtn.classList.contains('hidden')||finalStartBusy)return;
-  const reason=finalTimeReason();
-  startBtn.disabled=false; // nút mờ vẫn phải nhận click
-  startBtn.style.opacity=reason?'0.48':'';
-  startBtn.style.cursor=reason?'not-allowed':'';
-  if(reason){startBtn.setAttribute('aria-disabled','true');startBtn.title=reason;}
-  else{startBtn.removeAttribute('aria-disabled');startBtn.removeAttribute('title');}
-}
-function showFinalTimePopup(reason){
-  document.getElementById('finalTimePopupText').textContent=reason;
-  document.getElementById('finalTimePopup').classList.remove('hidden');
-}
-async function startFinalWithTimeGate(){
-  const reason=finalTimeReason();
-  if(reason){showFinalTimePopup(reason);return;}
-  finalStartBusy=true;
-  try{await startFinal();}finally{finalStartBusy=false;refreshFinalTimeButton();}
-}
-async function loadFinalTimeRun(){
-  try{
-    const d=await jsonp(API_BASE+'?api=student-info&class='+encodeURIComponent(CTX.classId)+'&student='+encodeURIComponent(CTX.studentId)+'&run='+encodeURIComponent(CTX.runId)+'&token='+encodeURIComponent(CTX.token));
-    if(!d||d.ok===false)throw new Error(d?.error||'Không lấy được thời gian ca thi');
-    finalTimeRun=d.run||{};finalTimeReady=true;
-  }catch(e){finalTimeReady=false;setMsg(topMsg,String(e.message||e),'err');}
-  refreshFinalTimeButton();
-}
 async function startFinal(){
   startBtn.disabled=true;
   resultCard.classList.add('hidden');
@@ -341,6 +288,8 @@ function showSubmitted(d){
     if(d.clipSaved)applyClipLocked(d.clipUrl||'');
     else if(d.finalSubmitOpen===false){clipBtn.disabled=true;clipUrl.readOnly=true;setMsg(submitMsg,'ĐÃ QUÁ HẠN NỘP BÀI THI CUỐI.','err');}
     else clipBtn.disabled=false;
+  }else{
+    clipBox.classList.add('hidden');
   }
 }
 function clipKey(){
@@ -468,6 +417,8 @@ function handleBackend(e){
       clipRule.innerHTML='<b>BẮT BUỘC:</b> Dán liên kết video và bấm <b>NỘP BÀI THI CUỐI</b> trước '+deadline+':59. Bài thi chưa hoàn tất nếu chưa gửi link.';
       if(d.finalSubmitOpen===false){clipBtn.disabled=true;clipUrl.readOnly=true;setMsg(submitMsg,'ĐÃ QUÁ HẠN NỘP BÀI THI CUỐI.','err');}
       else clipBtn.disabled=false;
+    }else{
+      clipBox.classList.add('hidden');
     }
 
     activePost='';
@@ -476,15 +427,11 @@ function handleBackend(e){
 
 document.addEventListener('DOMContentLoaded',async function(){
   window.addEventListener('message',handleBackend);
-  startBtn.onclick=startFinalWithTimeGate;
-  document.getElementById('finalTimePopupClose').onclick=()=>document.getElementById('finalTimePopup').classList.add('hidden');
-  document.getElementById('finalTimePopup').onclick=e=>{if(e.target.id==='finalTimePopup')e.currentTarget.classList.add('hidden');};
-  setInterval(refreshFinalTimeButton,15000);
+  startBtn.onclick=startFinal;
   clipBtn.onclick=submitClip;
 
   try{
     CTX=requireContext();
-    await loadFinalTimeRun();
     meta.textContent='Sẵn sàng';
     restoreClipState();
     ensureClientConfig().then(function(){
