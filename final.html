@@ -47,10 +47,11 @@
   </div>
 
   <div id="clipBox" class="card hidden">
-    <h2>NỘP LIÊN KẾT VIDEO</h2>
-    <input id="clipUrl" type="text" placeholder="https://...">
+    <h2>NỘP BÀI THI CUỐI</h2>
+    <div id="clipRule" class="sub" style="margin-bottom:10px"><b>BẮT BUỘC:</b> Dán liên kết video của bài thi. Bài thi chỉ hoàn tất sau khi gửi liên kết thành công.</div>
+    <input id="clipUrl" type="text" placeholder="Dán liên kết video https://...">
     <div class="row" style="margin-top:10px">
-      <button id="clipBtn" disabled>NỘP LIÊN KẾT VIDEO</button>
+      <button id="clipBtn" disabled>NỘP BÀI THI CUỐI</button>
     </div>
     <div id="submitMsg" class="msg"></div>
   </div>
@@ -282,7 +283,10 @@ function showSubmitted(d){
 
   if(d.clipRequired){
     clipBox.classList.remove('hidden');
+    const deadline=String(d.finalSubmitDeadline||(d.run&&d.run.finalSubmitDeadline)||(d.run&&d.run.clipDeadline)||'23:59');
+    clipRule.innerHTML='<b>BẮT BUỘC:</b> Dán liên kết video và bấm <b>NỘP BÀI THI CUỐI</b> trước '+deadline+':59. Bài thi chưa hoàn tất nếu chưa gửi link.';
     if(d.clipSaved)applyClipLocked(d.clipUrl||'');
+    else if(d.finalSubmitOpen===false){clipBtn.disabled=true;clipUrl.readOnly=true;setMsg(submitMsg,'ĐÃ QUÁ HẠN NỘP BÀI THI CUỐI.','err');}
     else clipBtn.disabled=false;
   }
 }
@@ -294,8 +298,8 @@ function applyClipLocked(url){
   clipBtn.disabled=true;
   clipUrl.readOnly=true;
   if(url&&!clipUrl.value)clipUrl.value=url;
-  clipBtn.textContent='ĐÃ NỘP LIÊN KẾT ✓';
-  setMsg(submitMsg,'ĐÃ GỬI LIÊN KẾT VIDEO.','ok');
+  clipBtn.textContent='ĐÃ NỘP BÀI THI CUỐI ✓';
+  setMsg(submitMsg,'ĐÃ NỘP BÀI THI CUỐI KÈM LIÊN KẾT VIDEO.','ok');
 }
 function restoreClipState(){
   try{
@@ -309,7 +313,7 @@ function resetClipForActiveFinal(){
   clipBox.classList.add('hidden');
   clipBtn.dataset.locked='';
   clipBtn.disabled=true;
-  clipBtn.textContent='NỘP LIÊN KẾT VIDEO';
+  clipBtn.textContent='NỘP BÀI THI CUỐI';
   clipUrl.readOnly=false;
   clipUrl.value='';
   submitMsg.textContent='';
@@ -318,7 +322,7 @@ function submitClip(){
   const u=String(clipUrl.value||'').trim();
   if(clipBtn.dataset.locked==='1'||clipPending)return;
   if(!/^https?:\/\//i.test(u)){
-    alert('Hãy dán liên kết video hợp lệ bắt đầu bằng http/https.');
+    alert('BẮT BUỘC dán liên kết video hợp lệ bắt đầu bằng http/https trước khi nộp bài thi cuối.');
     return;
   }
 
@@ -326,8 +330,8 @@ function submitClip(){
   activePost='CLIP';
   clipBtn.disabled=true;
   clipUrl.readOnly=true;
-  clipBtn.textContent='ĐANG NỘP...';
-  setMsg(submitMsg,'Đang gửi liên kết video...');
+  clipBtn.textContent='ĐANG NỘP BÀI...';
+  setMsg(submitMsg,'Đang nộp bài thi cuối kèm liên kết video...');
 
   postPayload({
     api:'clip-submit',
@@ -344,7 +348,7 @@ function handleBackend(e){
       clipPending=false;
       clipBtn.disabled=false;
       clipUrl.readOnly=false;
-      clipBtn.textContent='NỘP LIÊN KẾT VIDEO';
+      clipBtn.textContent='NỘP BÀI THI CUỐI';
       setMsg(submitMsg,'LỖI HỆ THỐNG: '+String(d.error||'Không xác định'),'err');
     }else if(activePost==='FINAL'){
       setMsg(topMsg,'LỖI HỆ THỐNG: '+String(d.error||'Không xác định'),'err');
@@ -401,13 +405,16 @@ function handleBackend(e){
       'NGÀY '+DATA.run.programDay+
       ' · Đã dùng '+used+'/'+max+' lần thi · ĐÃ KẾT THÚC';
 
-    setMsg(topMsg,'Bài thi nói cuối đã hoàn thành.','ok');
+    const deadline=String(d.finalSubmitDeadline||(DATA.run&&DATA.run.finalSubmitDeadline)||(DATA.run&&DATA.run.clipDeadline)||'23:59');
+    setMsg(topMsg,d.clipRequired?'Đã hoàn thành phần thi nói. BẮT BUỘC gửi link video và bấm NỘP BÀI THI CUỐI trước '+deadline+':59.':'Bài thi nói cuối đã hoàn thành.','ok');
     startBtn.classList.add('hidden');
     testCard.classList.add('hidden');
 
     if(d.clipRequired){
       clipBox.classList.remove('hidden');
-      clipBtn.disabled=false;
+      clipRule.innerHTML='<b>BẮT BUỘC:</b> Dán liên kết video và bấm <b>NỘP BÀI THI CUỐI</b> trước '+deadline+':59. Bài thi chưa hoàn tất nếu chưa gửi link.';
+      if(d.finalSubmitOpen===false){clipBtn.disabled=true;clipUrl.readOnly=true;setMsg(submitMsg,'ĐÃ QUÁ HẠN NỘP BÀI THI CUỐI.','err');}
+      else clipBtn.disabled=false;
     }
 
     activePost='';

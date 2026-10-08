@@ -129,7 +129,7 @@ function showFrame(page,tab){
 function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function uiState(s){
   const k=String(s||'').toUpperCase();
-  const m={RED:'ĐỎ',YELLOW:'VÀNG',BLUE:'XANH BIỂN',GREEN:'XANH LÁ',DONE:'ĐÃ HOÀN THÀNH',PENDING:'CHỜ',COMPLETED:'ĐÃ HOÀN THÀNH',RETRY:'CÒN ĐỎ – CÓ THỂ THI LẠI',MAX_ATTEMPTS:'ĐÃ HẾT LẦN THI',RETRY_FINAL:'CÒN VÀNG – CÓ THỂ THI LẠI',AWAIT_CLIP:'CHỜ VIDEO',CLIP_MISSING:'THIẾU VIDEO',MISSED:'BỎ LỠ',STARTED:'ĐANG THI',NOT_STARTED:'CHƯA BẮT ĐẦU','N/A':'—'};
+  const m={RED:'ĐỎ',YELLOW:'VÀNG',BLUE:'XANH BIỂN',GREEN:'XANH LÁ',DONE:'ĐÃ HOÀN THÀNH',PENDING:'CHỜ',COMPLETED:'ĐÃ HOÀN THÀNH',RETRY:'CÒN ĐỎ – CÓ THỂ THI LẠI',MAX_ATTEMPTS:'ĐÃ HẾT LẦN THI',RETRY_FINAL:'CÒN VÀNG – CÓ THỂ THI LẠI',AWAIT_CLIP:'CHỜ NỘP BÀI THI CUỐI',CLIP_MISSING:'QUÁ HẠN / THIẾU LINK VIDEO',MISSED:'BỎ LỠ',STARTED:'ĐANG THI',NOT_STARTED:'CHƯA BẮT ĐẦU','N/A':'—'};
   return m[k]||viState(s);
 }
 function clamp(n,a,b){n=Number(n||0);return Math.max(a,Math.min(b,n));}
@@ -246,7 +246,7 @@ async function openBeforeFinal(page,tab){
 }
 function finalPortalState(f){
   f=f||{};const k=String(f.status||'').toUpperCase();
-  if(k==='AWAIT_CLIP')return f.awaitingClip?'CHỜ VIDEO':'ĐÃ HOÀN THÀNH';
+  if(k==='AWAIT_CLIP')return f.awaitingClip?'CHỜ NỘP BÀI THI CUỐI':'ĐÃ HOÀN THÀNH';
   return uiState(k);
 }
 function dayMorningState(x){
@@ -256,7 +256,7 @@ function dayMorningState(x){
 }
 function dayFinalState(x){
   const k=String(x&&x.finalStatus||'').toUpperCase(),v=String(x&&x.videoStatus||'').toUpperCase();
-  if(k==='AWAIT_CLIP')return v==='PENDING'?'CHỜ VIDEO':'ĐÃ HOÀN THÀNH';
+  if(k==='AWAIT_CLIP')return v==='PENDING'?'CHỜ NỘP BÀI THI CUỐI':'ĐÃ HOÀN THÀNH';
   return uiState(k);
 }
 function difficultSorted(items,mode){
@@ -290,6 +290,8 @@ async function loadStudentInfo(force){
 }
 function nextActionText(d){
   if(isFinalWindowOpen(d)){
+    if(d.final&&d.final.awaitingClip)return 'Bạn đã xong phần thi nói nhưng CHƯA NỘP BÀI THI CUỐI. BẮT BUỘC gửi link video trước '+String(d.run.finalSubmitDeadline||d.run.clipDeadline||'23:59')+'.';
+    if(d.final&&d.final.clipMissing)return 'Bài thi cuối đã quá hạn hoàn tất vì thiếu liên kết video.';
     if(Number(d.counts.YELLOW||0)>0)return 'CA CUỐI NGÀY đã mở. Bạn còn '+d.counts.YELLOW+' VÀNG → vào CA CUỐI NGÀY để thi nói.';
     if(Number(d.reviewWaiting||0)>0)return 'CA CUỐI NGÀY đã mở. Bạn có '+d.reviewWaiting+' nội dung XANH LÁ đang chờ trợ giảng xét duyệt.';
     return 'CA CUỐI NGÀY đã mở. LUYỆN TẬP, CA SÁNG và CA THI GIỮA NGÀY đã đóng.';
@@ -326,8 +328,8 @@ function renderStudentInfo(d){
       middaySessionCardHtml(d,isFinalWindowOpen(d))+
       sessionCardHtml('CA CUỐI NGÀY','THI NÓI',d.final.used,d.final.maxAttempts,finalPortalState(d.final))+
     '</div></section>'+
-    '<section class="card ta-wait-card"><h2>TRỢ GIẢNG ĐANG ĐÁNH GIÁ</h2><div class="ta-wait-number">'+Number(d.reviewWaiting||0)+' <span>XANH LÁ</span></div><div class="sub">'+(d.reviewWaiting?'Đã nộp và đang chờ xét duyệt. ĐẠT → XANH BIỂN · CHƯA ĐẠT → VÀNG.':'Không có nội dung đang chờ trợ giảng.')+'</div></section>'+
-    '<section class="card"><h2>LỊCH HÔM NAY</h2><div class="day-timeline"><div><b>CA SÁNG</b><span>Từ '+esc(d.run.morningOpen||'—')+'</span></div><div><b>CA THI GIỮA NGÀY</b><span>Sau CA SÁNG → trước '+esc(d.run.finalOpen||'—')+'</span></div><div><b>CA CUỐI NGÀY</b><span>Từ '+esc(d.run.finalOpen||'—')+' · bắt đầu trước '+esc(d.run.finalDeadline||'—')+'</span></div><div><b>VIDEO</b><span>Hạn '+esc(d.run.clipDeadline||'—')+'</span></div></div></section>'+
+    '<section class="card ta-wait-card"><h2>TRỢ GIẢNG ĐANG ĐÁNH GIÁ</h2><div class="ta-wait-number">'+Number(d.reviewWaiting||0)+' <span>XANH LÁ</span></div><div class="sub">'+(d.final&&d.final.awaitingClip?'Chưa chuyển cho trợ giảng: bạn phải NỘP BÀI THI CUỐI kèm link video trước.':(d.reviewWaiting?'Đã nộp bài và đang chờ xét duyệt. ĐẠT → XANH BIỂN · CHƯA ĐẠT → VÀNG.':'Không có nội dung đang chờ trợ giảng.'))+'</div></section>'+
+    '<section class="card"><h2>LỊCH HÔM NAY</h2><div class="day-timeline"><div><b>CA SÁNG</b><span>Từ '+esc(d.run.morningOpen||'—')+'</span></div><div><b>CA THI GIỮA NGÀY</b><span>Sau CA SÁNG → trước '+esc(d.run.finalOpen||'—')+'</span></div><div><b>CA CUỐI NGÀY</b><span>Từ '+esc(d.run.finalOpen||'—')+' · bắt đầu trước '+esc(d.run.finalDeadline||'—')+'</span></div><div><b>NỘP BÀI THI CUỐI</b><span>Hạn '+esc(d.run.finalSubmitDeadline||d.run.clipDeadline||'—')+' · bắt buộc kèm link video</span></div></div></section>'+
     '<details class="card class-details"><summary>THÔNG TIN LỚP HỌC</summary><div class="class-info-grid"><b>Lớp</b><span>'+esc(c.className||CTX.classId)+'</span><b>Mã sinh viên</b><span>'+esc(d.student.studentId)+'</span><b>Chương trình</b><span>'+esc(c.programName||c.programId||'—')+'</span><b>Ngày học</b><span>'+day+(totalDays?' / '+totalDays:'')+'</span><b>Ngày bắt đầu</b><span>'+formatDateVN(c.startDate)+'</span><b>Kết thúc dự kiến</b><span>'+formatDateVN(c.plannedEndDate)+'</span><b>Giảng viên</b><span>'+esc(teacher)+'</span><b>Trợ giảng</b><span>'+esc(ta)+'</span></div></details>';
 }
 function sessionCardHtml(title,sub,used,max,status){
