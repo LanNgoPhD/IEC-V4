@@ -61,7 +61,7 @@
           <em id="examDrillMeta">Đang tải...</em>
           <i class="mini-progress"><u id="examDrillBar"></u></i>
         </button>
-        <button class="exam-parent-card" onclick="showFrame('final.html','exam')">
+        <button id="examFinalCard" class="exam-parent-card" onclick="openFinalFromPortal()">
           <b>CA CUỐI NGÀY</b>
           <span>Thi nói các nội dung VÀNG còn lại</span>
           <em id="examFinalMeta">Đang tải...</em>
@@ -94,7 +94,7 @@
 <script>
 const ROLE=(qp('role')||'student').toLowerCase();
 const VIEW=(qp('view')||'info').toLowerCase();
-const UI_BUILD='20261007.9';
+const UI_BUILD='20261008.FINAL_CARD_GATE';
 let CTX=null,STUDENT_INFO=null,PRACTICE_TAB=null,FINAL_LOCK_STATE=null;
 window.IEC_V4_RUNTIME_CONFIG=null;
 window.IEC_V4_CONFIG_PROMISE=null;
@@ -178,10 +178,59 @@ function isFinalWindowOpen(d,nowValue){
   const openMin=clockMinutes(run.finalOpen);
   return openMin!=null&&clock.minutes>=openMin;
 }
-function showFinalClosedNotice(){
+function showPortalLockNotice(title,message){
   const modal=document.getElementById('finalClosedModal');
   if(!modal)return;
+  const heading=document.getElementById('finalClosedModalTitle');
+  const body=modal.querySelector('.iec-lock-modal-text');
+  if(heading)heading.textContent=title||'THÔNG BÁO';
+  if(body)body.textContent=message||'';
   modal.hidden=false;
+}
+function showFinalClosedNotice(){
+  showPortalLockNotice('THÔNG BÁO','Chức năng này đã đóng vì ca thi cuối ngày đã mở.');
+}
+// Cùng một nguồn quyết định cho màu thẻ và đường vào FINAL.
+// Trạng thái IN_PROGRESS là lịch sử bài thi, KHÔNG phải quyền mở ca thi.
+function finalEntryGate(d,nowValue){
+  const run=d&&d.run||{},clock=vietnamClockParts(nowValue),day=runDateKey(run);
+  const open=clockMinutes(run.finalOpen),startCutoff=clockMinutes(run.finalDeadline);
+  const end=clockMinutes(run.finalSubmitDeadline||run.clipDeadline);
+  const openText=String(run.finalOpen||'17:00');
+  if(!day)return {allowed:false,label:'KHÔNG XÁC ĐỊNH NGÀY THI',message:'Không xác định được ngày của ca thi cuối.'};
+  if(day>clock.dateKey)return {allowed:false,label:'CHƯA ĐẾN NGÀY THI',message:'Chưa đến ngày học của ca thi cuối.'};
+  if(day<clock.dateKey)return {allowed:false,label:'ĐÃ ĐÓNG · HẾT NGÀY',message:'Ca thi cuối ngày này đã đóng.'};
+  if(open===null||startCutoff===null||end===null)return {allowed:false,label:'CHƯA CÓ LỊCH THI',message:'Chưa có giờ mở hoặc hạn kết thúc ca thi hợp lệ.'};
+  if(clock.minutes<open)return {allowed:false,label:'CHƯA MỞ · '+openText,message:'Chưa đến giờ bắt đầu bài thi nói cuối. Ca thi mở lúc '+openText+'.'};
+  if(clock.minutes>end)return {allowed:false,label:'ĐÃ HẾT HẠN NỘP BÀI',message:'Đã hết hạn nộp bài thi cuối.'};
+  if(clock.minutes>startCutoff){
+    const fin=d&&d.final||{},state=String(fin.status||'').toUpperCase();
+    // Sau hạn bắt đầu mới, chỉ được vào để tiếp tục session/nộp link hợp lệ.
+    if(fin.awaitingClip||state==='IN_PROGRESS')return {allowed:true,label:'CHỈ TIẾP TỤC / NỘP BÀI',message:''};
+    return {allowed:false,label:'ĐÃ HẾT GIỜ BẮT ĐẦU',message:'Đã hết giờ bắt đầu lượt thi nói cuối mới.'};
+  }
+  return {allowed:true,label:'',message:''};
+}
+function applyFinalEntryGate(d){
+  const gate=finalEntryGate(d);
+  const card=document.getElementById('examFinalCard');
+  setLockedButton(card,!gate.allowed,gate.message);
+  if(card)card.onclick=function(){openFinalFromPortal();};
+  if(!gate.allowed){
+    const meta=document.getElementById('examFinalMeta');
+    if(meta)meta.textContent=attemptsText(d.final.used,d.final.maxAttempts,'lần')+' · '+gate.label;
+  }
+  return gate;
+}
+async function openFinalFromPortal(){
+  try{
+    // Cập nhật RUN trước mỗi lượt mở: tránh giữ FINAL_OPEN cũ sau khi admin đổi giờ.
+    const d=await loadStudentInfo(true);
+    const gate=applyFinalEntryGate(d);
+    if(!gate.allowed){showPortalLockNotice('CA CUỐI NGÀY',gate.message);return false;}
+    showFrame('final.html','exam');
+    return true;
+  }catch(e){showErr(e);return false;}
 }
 function hideFinalClosedNotice(){
   const modal=document.getElementById('finalClosedModal');
@@ -373,6 +422,7 @@ function renderExamOverview(d){
   setBar(examFinalBar,d.final.used,d.final.maxAttempts);
 
   const locked=applyFinalWindowLocks(d);
+  applyFinalEntryGate(d);
   if(locked){
     examMorningMeta.textContent='ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ';
     examDrillMeta.textContent='ĐÃ ĐÓNG · CA CUỐI NGÀY ĐÃ MỞ';
@@ -453,10 +503,7 @@ async function routeStudent(){
   if(VIEW==='practice')return openBeforeFinal('drill.html','frame');
   if(VIEW==='exam'){
     const which=(qp('exam')||'').toLowerCase();
-    if(which==='final'){
-      await loadStudentInfo(true);
-      return showFrame('final.html','exam');
-    }
+    if(which==='final')return openFinalFromPortal();
     if(which==='morning')return openBeforeFinal('morning.html','exam');
     if(which==='drill')return openBeforeFinal('drill.html?examOnly=1','exam');
     return openExamOverview();
@@ -484,6 +531,8 @@ document.addEventListener('DOMContentLoaded',function(){
     else{
       buildStudentNav();
       routeStudent().catch(showErr);
+      // Re-evaluate the clock each 30 s when a portal stays open across 17:00.
+      setInterval(function(){if(STUDENT_INFO){renderExamOverview(STUDENT_INFO);}},30000);
       window.IEC_V4_ENSURE_CONFIG().catch(function(){});
     }
   }catch(e){showErr(e);}
