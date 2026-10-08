@@ -94,7 +94,7 @@
 <script>
 const ROLE=(qp('role')||'student').toLowerCase();
 const VIEW=(qp('view')||'info').toLowerCase();
-const UI_BUILD='20261008.FINAL_CARD_GATE';
+const UI_BUILD='20261008.FINAL_CARD_POPUP_FAST';
 let CTX=null,STUDENT_INFO=null,PRACTICE_TAB=null,FINAL_LOCK_STATE=null;
 window.IEC_V4_RUNTIME_CONFIG=null;
 window.IEC_V4_CONFIG_PROMISE=null;
@@ -224,7 +224,17 @@ function applyFinalEntryGate(d){
 }
 async function openFinalFromPortal(){
   try{
-    // Cập nhật RUN trước mỗi lượt mở: tránh giữ FINAL_OPEN cũ sau khi admin đổi giờ.
+    // Nếu portal đã biết ca đang KHÓA, hiện popup ngay, KHÔNG chờ request Apps Script.
+    // Đồng bộ với cơ chế click của CA SÁNG và CA GIỮA NGÀY.
+    if(STUDENT_INFO){
+      const localGate=finalEntryGate(STUDENT_INFO);
+      if(!localGate.allowed){
+        applyFinalEntryGate(STUDENT_INFO);
+        showPortalLockNotice('CA CUỐI NGÀY',localGate.message);
+        return false;
+      }
+    }
+    // Chỉ khi có thể MỞ ca mới đọc lại RUN mới nhất; backend vẫn là nguồn kiểm tra cuối.
     const d=await loadStudentInfo(true);
     const gate=applyFinalEntryGate(d);
     if(!gate.allowed){showPortalLockNotice('CA CUỐI NGÀY',gate.message);return false;}
